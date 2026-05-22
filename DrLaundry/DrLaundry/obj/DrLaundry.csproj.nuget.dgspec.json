@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\DrLaundry.csproj": {}
+    "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\DrLaundry.csproj": {}
   },
   "projects": {
-    "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\DrLaundry.csproj": {
+    "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\DrLaundry.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\DrLaundry.csproj",
+        "projectUniqueName": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\DrLaundry.csproj",
         "projectName": "DrLaundry",
-        "projectPath": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\DrLaundry.csproj",
+        "projectPath": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\DrLaundry.csproj",
         "packagesPath": "C:\\Users\\PC\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\obj\\",
+        "outputPath": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -51,6 +51,10 @@
         "net9.0": {
           "targetAlias": "net9.0",
           "dependencies": {
+            "Anthropic.SDK": {
+              "target": "Package",
+              "version": "[5.10.0, )"
+            },
             "MailKit": {
               "target": "Package",
               "version": "[4.16.0, )"

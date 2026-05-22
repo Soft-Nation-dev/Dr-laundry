@@ -7,6 +7,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+		<PackageReference Include="Anthropic.SDK" Version="5.10.0" />
 		<PackageReference Include="MailKit" Version="4.16.0" />
 		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.0" />
 		<PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="9.0.0" />
@@ -21,6 +22,10 @@
 		<PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
 
 		<PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.18.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Folder Include="Dockerfile\" />
 	</ItemGroup>
 
 </Project>

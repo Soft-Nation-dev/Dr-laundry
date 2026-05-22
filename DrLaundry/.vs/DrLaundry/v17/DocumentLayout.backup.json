@@ -1,157 +1,157 @@
 {
   "Version": 1,
-  "WorkspaceRootPath": "C:\\Users\\PC\\source\\repos\\DrLaundry\\",
+  "WorkspaceRootPath": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\drlaundry\\drlaundry\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
-      "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\drlaundry\\drlaundry\\controllers\\admincontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\controllers\\admincontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\drlaundry\\drlaundry\\controllers\\authcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\controllers\\authcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\drlaundry\\drlaundry\\services\\interfaces\\iauthservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\services\\interfaces\\iauthservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\drlaundry\\drlaundry\\services\\authservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\services\\authservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\drlaundry\\drlaundry\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\drlaundry\\drlaundry\\services\\emailverificationservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\services\\emailverificationservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\drlaundry\\drlaundry\\services\\interfaces\\iemailverificationservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\services\\interfaces\\iemailverificationservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\drlaundry\\drlaundry\\services\\otpservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\services\\otpservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\drlaundry\\drlaundry\\services\\interfaces\\iotpservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\services\\interfaces\\iotpservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\drlaundry\\drlaundry\\data\\applicationdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\data\\applicationdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\drlaundry\\drlaundry\\dtos\\resendotpdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\dtos\\resendotpdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\drlaundry\\drlaundry\\dtos\\verifyemaildto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\dtos\\verifyemaildto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\drlaundry\\drlaundry\\models\\emailotp.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\models\\emailotp.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\drlaundry\\drlaundry\\services\\emailservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\services\\emailservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\drlaundry\\drlaundry\\helpers\\emailsettings.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\helpers\\emailsettings.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\drlaundry\\drlaundry\\helpers\\jwthelper.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\helpers\\jwthelper.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\drlaundry\\drlaundry\\data\\roleseeder.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\backend\\drlaundry\\drlaundry\\data\\roleseeder.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\data\\roleseeder.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\drlaundry\\drlaundry\\models\\applicationuser.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\backend\\drlaundry\\drlaundry\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\backend\\drlaundry\\drlaundry\\controllers\\admincontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\controllers\\admincontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\backend\\drlaundry\\drlaundry\\controllers\\authcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\controllers\\authcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\backend\\drlaundry\\drlaundry\\services\\interfaces\\iauthservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\services\\interfaces\\iauthservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\backend\\drlaundry\\drlaundry\\services\\authservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\services\\authservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\backend\\drlaundry\\drlaundry\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\backend\\drlaundry\\drlaundry\\services\\emailverificationservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\services\\emailverificationservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\backend\\drlaundry\\drlaundry\\services\\interfaces\\iemailverificationservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\services\\interfaces\\iemailverificationservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\backend\\drlaundry\\drlaundry\\services\\otpservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\services\\otpservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\backend\\drlaundry\\drlaundry\\services\\interfaces\\iotpservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\services\\interfaces\\iotpservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\backend\\drlaundry\\drlaundry\\data\\applicationdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\data\\applicationdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\backend\\drlaundry\\drlaundry\\dtos\\resendotpdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\dtos\\resendotpdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\backend\\drlaundry\\drlaundry\\dtos\\verifyemaildto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\dtos\\verifyemaildto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\backend\\drlaundry\\drlaundry\\models\\emailotp.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\models\\emailotp.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\backend\\drlaundry\\drlaundry\\services\\emailservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\services\\emailservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\backend\\drlaundry\\drlaundry\\helpers\\emailsettings.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\helpers\\emailsettings.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\backend\\drlaundry\\drlaundry\\helpers\\jwthelper.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\helpers\\jwthelper.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\backend\\drlaundry\\drlaundry\\models\\applicationuser.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\models\\applicationuser.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\drlaundry\\drlaundry\\controllers\\profilecontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\backend\\drlaundry\\drlaundry\\controllers\\profilecontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\controllers\\profilecontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\drlaundry\\drlaundry\\services\\interfaces\\iemailservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\backend\\drlaundry\\drlaundry\\services\\interfaces\\iemailservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\services\\interfaces\\iemailservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\drlaundry\\drlaundry\\services\\profileservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\backend\\drlaundry\\drlaundry\\services\\profileservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\services\\profileservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\drlaundry\\drlaundry\\services\\interfaces\\iprofileservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\backend\\drlaundry\\drlaundry\\services\\interfaces\\iprofileservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\services\\interfaces\\iprofileservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\drlaundry\\drlaundry\\dtos\\updateprofiledto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\backend\\drlaundry\\drlaundry\\dtos\\updateprofiledto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\dtos\\updateprofiledto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\drlaundry\\drlaundry\\dtos\\profiledto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\backend\\drlaundry\\drlaundry\\dtos\\profiledto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\dtos\\profiledto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\drlaundry\\drlaundry\\services\\adminservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\backend\\drlaundry\\drlaundry\\services\\adminservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\services\\adminservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\drlaundry\\drlaundry\\services\\interfaces\\iadminservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\backend\\drlaundry\\drlaundry\\services\\interfaces\\iadminservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\services\\interfaces\\iadminservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\drlaundry\\drlaundry\\dtos\\apiresponse.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\backend\\drlaundry\\drlaundry\\dtos\\apiresponse.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\dtos\\apiresponse.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\drlaundry\\drlaundry\\drlaundry.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
+      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\backend\\drlaundry\\drlaundry\\drlaundry.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
       "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\drlaundry.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\drlaundry\\drlaundry\\dtos\\forgotpassworddto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\backend\\drlaundry\\drlaundry\\dtos\\forgotpassworddto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\dtos\\forgotpassworddto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\drlaundry\\drlaundry\\dtos\\resetpassworddto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\backend\\drlaundry\\drlaundry\\dtos\\resetpassworddto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\dtos\\resetpassworddto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\drlaundry\\drlaundry\\dtos\\logindto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\backend\\drlaundry\\drlaundry\\dtos\\logindto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\dtos\\logindto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\drlaundry\\drlaundry\\dtos\\registerdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\backend\\drlaundry\\drlaundry\\dtos\\registerdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\dtos\\registerdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\drlaundry\\drlaundry\\migrations\\20260507162227_email.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\backend\\drlaundry\\drlaundry\\migrations\\20260507162227_email.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\migrations\\20260507162227_email.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\drlaundry\\drlaundry\\migrations\\20260507150731_intial.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\backend\\drlaundry\\drlaundry\\migrations\\20260507150731_intial.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\migrations\\20260507150731_intial.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\drlaundry\\drlaundry\\migrations\\20260513231152_first.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\backend\\drlaundry\\drlaundry\\migrations\\20260513231152_first.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\migrations\\20260513231152_first.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\drlaundry\\drlaundry\\migrations\\20260520125327_mores.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\backend\\drlaundry\\drlaundry\\migrations\\20260520125327_mores.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\migrations\\20260520125327_mores.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\drlaundry\\drlaundry\\migrations\\20260520121916_mails.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|c:\\users\\pc\\source\\repos\\backend\\drlaundry\\drlaundry\\migrations\\20260520121916_mails.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{97D21BFC-2222-49B2-8123-232B91DAD833}|DrLaundry\\DrLaundry.csproj|solutionrelative:drlaundry\\migrations\\20260520121916_mails.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
@@ -162,7 +162,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 5,
+          "SelectedChildIndex": 4,
           "Children": [
             {
               "$type": "Bookmark",
@@ -173,16 +173,12 @@
               "Name": "ST:0:0:{aa2115a1-9712-457b-9047-dbb71ca2cdd2}"
             },
             {
-              "$type": "Bookmark",
-              "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
-            },
-            {
               "$type": "Document",
-              "DocumentIndex": 8,
+              "DocumentIndex": 9,
               "Title": "OtpService.cs",
-              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Services\\OtpService.cs",
+              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Services\\OtpService.cs",
               "RelativeDocumentMoniker": "DrLaundry\\Services\\OtpService.cs",
-              "ToolTip": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Services\\OtpService.cs",
+              "ToolTip": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Services\\OtpService.cs",
               "RelativeToolTip": "DrLaundry\\Services\\OtpService.cs",
               "ViewState": "AgIAAB0AAAAAAAAAAAAUwDUAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -190,11 +186,36 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 9,
+              "DocumentIndex": 1,
+              "Title": "appsettings.json",
+              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\appsettings.json",
+              "RelativeDocumentMoniker": "DrLaundry\\appsettings.json",
+              "ToolTip": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\appsettings.json",
+              "RelativeToolTip": "DrLaundry\\appsettings.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAgAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2026-05-07T13:57:31.487Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "RoleSeeder.cs",
+              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Data\\RoleSeeder.cs",
+              "RelativeDocumentMoniker": "DrLaundry\\Data\\RoleSeeder.cs",
+              "ToolTip": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Data\\RoleSeeder.cs",
+              "RelativeToolTip": "DrLaundry\\Data\\RoleSeeder.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAgAAAAJAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-05-07T15:43:29.723Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
               "Title": "IOtpService.cs",
-              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Services\\Interfaces\\IOtpService.cs",
+              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Services\\Interfaces\\IOtpService.cs",
               "RelativeDocumentMoniker": "DrLaundry\\Services\\Interfaces\\IOtpService.cs",
-              "ToolTip": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Services\\Interfaces\\IOtpService.cs",
+              "ToolTip": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Services\\Interfaces\\IOtpService.cs",
               "RelativeToolTip": "DrLaundry\\Services\\Interfaces\\IOtpService.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAUAAAA9AAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -202,24 +223,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "appsettings.json",
-              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\appsettings.json",
-              "RelativeDocumentMoniker": "DrLaundry\\appsettings.json",
-              "ToolTip": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\appsettings.json",
-              "RelativeToolTip": "DrLaundry\\appsettings.json",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAgAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
-              "WhenOpened": "2026-05-07T13:57:31.487Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 10,
+              "DocumentIndex": 11,
               "Title": "ApplicationDbContext.cs",
-              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Data\\ApplicationDbContext.cs",
+              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Data\\ApplicationDbContext.cs",
               "RelativeDocumentMoniker": "DrLaundry\\Data\\ApplicationDbContext.cs",
-              "ToolTip": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Data\\ApplicationDbContext.cs",
+              "ToolTip": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Data\\ApplicationDbContext.cs",
               "RelativeToolTip": "DrLaundry\\Data\\ApplicationDbContext.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAA8AAAA2AAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -227,11 +235,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 2,
               "Title": "AdminController.cs",
-              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Controllers\\AdminController.cs",
+              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Controllers\\AdminController.cs",
               "RelativeDocumentMoniker": "DrLaundry\\Controllers\\AdminController.cs",
-              "ToolTip": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Controllers\\AdminController.cs",
+              "ToolTip": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Controllers\\AdminController.cs",
               "RelativeToolTip": "DrLaundry\\Controllers\\AdminController.cs",
               "ViewState": "AgIAAAQAAAAAAAAAAAAcwCoAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -239,11 +247,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 7,
+              "DocumentIndex": 8,
               "Title": "IEmailVerificationService.cs",
-              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Services\\Interfaces\\IEmailVerificationService.cs",
+              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Services\\Interfaces\\IEmailVerificationService.cs",
               "RelativeDocumentMoniker": "DrLaundry\\Services\\Interfaces\\IEmailVerificationService.cs",
-              "ToolTip": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Services\\Interfaces\\IEmailVerificationService.cs",
+              "ToolTip": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Services\\Interfaces\\IEmailVerificationService.cs",
               "RelativeToolTip": "DrLaundry\\Services\\Interfaces\\IEmailVerificationService.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAA/AAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -251,11 +259,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 6,
+              "DocumentIndex": 7,
               "Title": "EmailVerificationService.cs",
-              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Services\\EmailVerificationService.cs",
+              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Services\\EmailVerificationService.cs",
               "RelativeDocumentMoniker": "DrLaundry\\Services\\EmailVerificationService.cs",
-              "ToolTip": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Services\\EmailVerificationService.cs",
+              "ToolTip": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Services\\EmailVerificationService.cs",
               "RelativeToolTip": "DrLaundry\\Services\\EmailVerificationService.cs",
               "ViewState": "AgIAABoAAAAAAAAAAAAUwDIAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -263,11 +271,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 6,
               "Title": "Program.cs",
-              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Program.cs",
+              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Program.cs",
               "RelativeDocumentMoniker": "DrLaundry\\Program.cs",
-              "ToolTip": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Program.cs",
+              "ToolTip": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Program.cs",
               "RelativeToolTip": "DrLaundry\\Program.cs",
               "ViewState": "AgIAAD4AAAAAAAAAAAAAAEEAAAA2AAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -275,11 +283,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 3,
               "Title": "AuthController.cs",
-              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Controllers\\AuthController.cs",
+              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Controllers\\AuthController.cs",
               "RelativeDocumentMoniker": "DrLaundry\\Controllers\\AuthController.cs",
-              "ToolTip": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Controllers\\AuthController.cs",
+              "ToolTip": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Controllers\\AuthController.cs",
               "RelativeToolTip": "DrLaundry\\Controllers\\AuthController.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAIAAAAfAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -287,11 +295,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 4,
               "Title": "IAuthService.cs",
-              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Services\\Interfaces\\IAuthService.cs",
+              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Services\\Interfaces\\IAuthService.cs",
               "RelativeDocumentMoniker": "DrLaundry\\Services\\Interfaces\\IAuthService.cs",
-              "ToolTip": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Services\\Interfaces\\IAuthService.cs",
+              "ToolTip": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Services\\Interfaces\\IAuthService.cs",
               "RelativeToolTip": "DrLaundry\\Services\\Interfaces\\IAuthService.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAoAAABJAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -299,11 +307,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 5,
               "Title": "AuthService.cs",
-              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Services\\AuthService.cs",
+              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Services\\AuthService.cs",
               "RelativeDocumentMoniker": "DrLaundry\\Services\\AuthService.cs",
-              "ToolTip": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Services\\AuthService.cs",
+              "ToolTip": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Services\\AuthService.cs",
               "RelativeToolTip": "DrLaundry\\Services\\AuthService.cs",
               "ViewState": "AgIAAIEAAAAAAAAAAAAUwJkAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -313,9 +321,9 @@
               "$type": "Document",
               "DocumentIndex": 36,
               "Title": "20260520125327_Mores.cs",
-              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Migrations\\20260520125327_Mores.cs",
+              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Migrations\\20260520125327_Mores.cs",
               "RelativeDocumentMoniker": "DrLaundry\\Migrations\\20260520125327_Mores.cs",
-              "ToolTip": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Migrations\\20260520125327_Mores.cs",
+              "ToolTip": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Migrations\\20260520125327_Mores.cs",
               "RelativeToolTip": "DrLaundry\\Migrations\\20260520125327_Mores.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -323,11 +331,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 11,
+              "DocumentIndex": 12,
               "Title": "ResendOtpDto.cs",
-              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\DTOs\\ResendOtpDto.cs",
+              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\DTOs\\ResendOtpDto.cs",
               "RelativeDocumentMoniker": "DrLaundry\\DTOs\\ResendOtpDto.cs",
-              "ToolTip": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\DTOs\\ResendOtpDto.cs",
+              "ToolTip": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\DTOs\\ResendOtpDto.cs",
               "RelativeToolTip": "DrLaundry\\DTOs\\ResendOtpDto.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAApAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -335,11 +343,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 12,
+              "DocumentIndex": 13,
               "Title": "VerifyEmailDto.cs",
-              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\DTOs\\VerifyEmailDto.cs",
+              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\DTOs\\VerifyEmailDto.cs",
               "RelativeDocumentMoniker": "DrLaundry\\DTOs\\VerifyEmailDto.cs",
-              "ToolTip": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\DTOs\\VerifyEmailDto.cs",
+              "ToolTip": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\DTOs\\VerifyEmailDto.cs",
               "RelativeToolTip": "DrLaundry\\DTOs\\VerifyEmailDto.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAUAAAAoAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -347,11 +355,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 13,
+              "DocumentIndex": 14,
               "Title": "EmailOtp.cs",
-              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Models\\EmailOtp.cs",
+              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Models\\EmailOtp.cs",
               "RelativeDocumentMoniker": "DrLaundry\\Models\\EmailOtp.cs",
-              "ToolTip": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Models\\EmailOtp.cs",
+              "ToolTip": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Models\\EmailOtp.cs",
               "RelativeToolTip": "DrLaundry\\Models\\EmailOtp.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAkAAAAFAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -359,11 +367,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 14,
+              "DocumentIndex": 15,
               "Title": "EmailService.cs",
-              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Services\\EmailService.cs",
+              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Services\\EmailService.cs",
               "RelativeDocumentMoniker": "DrLaundry\\Services\\EmailService.cs",
-              "ToolTip": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Services\\EmailService.cs",
+              "ToolTip": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Services\\EmailService.cs",
               "RelativeToolTip": "DrLaundry\\Services\\EmailService.cs",
               "ViewState": "AgIAABYAAAAAAAAAAAAAACQAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -371,11 +379,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 15,
+              "DocumentIndex": 16,
               "Title": "EmailSettings.cs",
-              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Helpers\\EmailSettings.cs",
+              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Helpers\\EmailSettings.cs",
               "RelativeDocumentMoniker": "DrLaundry\\Helpers\\EmailSettings.cs",
-              "ToolTip": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Helpers\\EmailSettings.cs",
+              "ToolTip": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Helpers\\EmailSettings.cs",
               "RelativeToolTip": "DrLaundry\\Helpers\\EmailSettings.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAsAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -383,11 +391,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 16,
+              "DocumentIndex": 17,
               "Title": "JwtHelper.cs",
-              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Helpers\\JwtHelper.cs",
+              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Helpers\\JwtHelper.cs",
               "RelativeDocumentMoniker": "DrLaundry\\Helpers\\JwtHelper.cs",
-              "ToolTip": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Helpers\\JwtHelper.cs",
+              "ToolTip": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Helpers\\JwtHelper.cs",
               "RelativeToolTip": "DrLaundry\\Helpers\\JwtHelper.cs",
               "ViewState": "AgIAAA4AAAAAAAAAAAAuwDgAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -397,9 +405,9 @@
               "$type": "Document",
               "DocumentIndex": 37,
               "Title": "20260520121916_Mails.cs",
-              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Migrations\\20260520121916_Mails.cs",
+              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Migrations\\20260520121916_Mails.cs",
               "RelativeDocumentMoniker": "DrLaundry\\Migrations\\20260520121916_Mails.cs",
-              "ToolTip": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Migrations\\20260520121916_Mails.cs",
+              "ToolTip": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Migrations\\20260520121916_Mails.cs",
               "RelativeToolTip": "DrLaundry\\Migrations\\20260520121916_Mails.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -407,23 +415,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 17,
-              "Title": "RoleSeeder.cs",
-              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Data\\RoleSeeder.cs",
-              "RelativeDocumentMoniker": "DrLaundry\\Data\\RoleSeeder.cs",
-              "ToolTip": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Data\\RoleSeeder.cs",
-              "RelativeToolTip": "DrLaundry\\Data\\RoleSeeder.cs",
-              "ViewState": "AgIAACcAAAAAAAAAAAAUwDoAAAABAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-05-07T15:43:29.723Z"
-            },
-            {
-              "$type": "Document",
               "DocumentIndex": 18,
               "Title": "ApplicationUser.cs",
-              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Models\\ApplicationUser.cs",
+              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Models\\ApplicationUser.cs",
               "RelativeDocumentMoniker": "DrLaundry\\Models\\ApplicationUser.cs",
-              "ToolTip": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Models\\ApplicationUser.cs",
+              "ToolTip": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Models\\ApplicationUser.cs",
               "RelativeToolTip": "DrLaundry\\Models\\ApplicationUser.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAAwAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -433,9 +429,9 @@
               "$type": "Document",
               "DocumentIndex": 35,
               "Title": "20260513231152_First.cs",
-              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Migrations\\20260513231152_First.cs",
+              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Migrations\\20260513231152_First.cs",
               "RelativeDocumentMoniker": "DrLaundry\\Migrations\\20260513231152_First.cs",
-              "ToolTip": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Migrations\\20260513231152_First.cs",
+              "ToolTip": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Migrations\\20260513231152_First.cs",
               "RelativeToolTip": "DrLaundry\\Migrations\\20260513231152_First.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -445,9 +441,9 @@
               "$type": "Document",
               "DocumentIndex": 19,
               "Title": "ProfileController.cs",
-              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Controllers\\ProfileController.cs",
+              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Controllers\\ProfileController.cs",
               "RelativeDocumentMoniker": "DrLaundry\\Controllers\\ProfileController.cs",
-              "ToolTip": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Controllers\\ProfileController.cs",
+              "ToolTip": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Controllers\\ProfileController.cs",
               "RelativeToolTip": "DrLaundry\\Controllers\\ProfileController.cs",
               "ViewState": "AgIAAAYAAAAAAAAAAAAcwBgAAAAfAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -457,9 +453,9 @@
               "$type": "Document",
               "DocumentIndex": 33,
               "Title": "20260507162227_Email.cs",
-              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Migrations\\20260507162227_Email.cs",
+              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Migrations\\20260507162227_Email.cs",
               "RelativeDocumentMoniker": "DrLaundry\\Migrations\\20260507162227_Email.cs",
-              "ToolTip": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Migrations\\20260507162227_Email.cs",
+              "ToolTip": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Migrations\\20260507162227_Email.cs",
               "RelativeToolTip": "DrLaundry\\Migrations\\20260507162227_Email.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -469,9 +465,9 @@
               "$type": "Document",
               "DocumentIndex": 20,
               "Title": "IEmailService.cs",
-              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Services\\Interfaces\\IEmailService.cs",
+              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Services\\Interfaces\\IEmailService.cs",
               "RelativeDocumentMoniker": "DrLaundry\\Services\\Interfaces\\IEmailService.cs",
-              "ToolTip": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Services\\Interfaces\\IEmailService.cs",
+              "ToolTip": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Services\\Interfaces\\IEmailService.cs",
               "RelativeToolTip": "DrLaundry\\Services\\Interfaces\\IEmailService.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAABEAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -481,9 +477,9 @@
               "$type": "Document",
               "DocumentIndex": 21,
               "Title": "ProfileService.cs",
-              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Services\\ProfileService.cs",
+              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Services\\ProfileService.cs",
               "RelativeDocumentMoniker": "DrLaundry\\Services\\ProfileService.cs",
-              "ToolTip": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Services\\ProfileService.cs",
+              "ToolTip": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Services\\ProfileService.cs",
               "RelativeToolTip": "DrLaundry\\Services\\ProfileService.cs",
               "ViewState": "AgIAAB4AAAAAAAAAAAAcwDgAAAAJAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -493,9 +489,9 @@
               "$type": "Document",
               "DocumentIndex": 22,
               "Title": "IProfileService.cs",
-              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Services\\Interfaces\\IProfileService.cs",
+              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Services\\Interfaces\\IProfileService.cs",
               "RelativeDocumentMoniker": "DrLaundry\\Services\\Interfaces\\IProfileService.cs",
-              "ToolTip": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Services\\Interfaces\\IProfileService.cs",
+              "ToolTip": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Services\\Interfaces\\IProfileService.cs",
               "RelativeToolTip": "DrLaundry\\Services\\Interfaces\\IProfileService.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAABXAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -505,9 +501,9 @@
               "$type": "Document",
               "DocumentIndex": 23,
               "Title": "UpdateProfileDto.cs",
-              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\DTOs\\UpdateProfileDto.cs",
+              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\DTOs\\UpdateProfileDto.cs",
               "RelativeDocumentMoniker": "DrLaundry\\DTOs\\UpdateProfileDto.cs",
-              "ToolTip": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\DTOs\\UpdateProfileDto.cs",
+              "ToolTip": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\DTOs\\UpdateProfileDto.cs",
               "RelativeToolTip": "DrLaundry\\DTOs\\UpdateProfileDto.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAUAAAAtAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -517,9 +513,9 @@
               "$type": "Document",
               "DocumentIndex": 24,
               "Title": "ProfileDto.cs",
-              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\DTOs\\ProfileDto.cs",
+              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\DTOs\\ProfileDto.cs",
               "RelativeDocumentMoniker": "DrLaundry\\DTOs\\ProfileDto.cs",
-              "ToolTip": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\DTOs\\ProfileDto.cs",
+              "ToolTip": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\DTOs\\ProfileDto.cs",
               "RelativeToolTip": "DrLaundry\\DTOs\\ProfileDto.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAJAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -529,9 +525,9 @@
               "$type": "Document",
               "DocumentIndex": 25,
               "Title": "AdminService.cs",
-              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Services\\AdminService.cs",
+              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Services\\AdminService.cs",
               "RelativeDocumentMoniker": "DrLaundry\\Services\\AdminService.cs",
-              "ToolTip": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Services\\AdminService.cs",
+              "ToolTip": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Services\\AdminService.cs",
               "RelativeToolTip": "DrLaundry\\Services\\AdminService.cs",
               "ViewState": "AgIAABcAAAAAAAAAAAAAACcAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -541,9 +537,9 @@
               "$type": "Document",
               "DocumentIndex": 26,
               "Title": "IAdminService.cs",
-              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Services\\Interfaces\\IAdminService.cs",
+              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Services\\Interfaces\\IAdminService.cs",
               "RelativeDocumentMoniker": "DrLaundry\\Services\\Interfaces\\IAdminService.cs",
-              "ToolTip": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Services\\Interfaces\\IAdminService.cs",
+              "ToolTip": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Services\\Interfaces\\IAdminService.cs",
               "RelativeToolTip": "DrLaundry\\Services\\Interfaces\\IAdminService.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAoAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -553,9 +549,9 @@
               "$type": "Document",
               "DocumentIndex": 27,
               "Title": "ApiResponse.cs",
-              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\DTOs\\ApiResponse.cs",
+              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\DTOs\\ApiResponse.cs",
               "RelativeDocumentMoniker": "DrLaundry\\DTOs\\ApiResponse.cs",
-              "ToolTip": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\DTOs\\ApiResponse.cs",
+              "ToolTip": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\DTOs\\ApiResponse.cs",
               "RelativeToolTip": "DrLaundry\\DTOs\\ApiResponse.cs",
               "ViewState": "AgIAAAEAAAAAAAAAAAAcwBsAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -565,9 +561,9 @@
               "$type": "Document",
               "DocumentIndex": 28,
               "Title": "DrLaundry.csproj",
-              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\DrLaundry.csproj",
+              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\DrLaundry.csproj",
               "RelativeDocumentMoniker": "DrLaundry\\DrLaundry.csproj",
-              "ToolTip": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\DrLaundry.csproj",
+              "ToolTip": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\DrLaundry.csproj",
               "RelativeToolTip": "DrLaundry\\DrLaundry.csproj",
               "ViewState": "AgIAABAAAAAAAAAAAAAiwBkAAAAKAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
@@ -577,9 +573,9 @@
               "$type": "Document",
               "DocumentIndex": 29,
               "Title": "ForgotPasswordDto.cs",
-              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\DTOs\\ForgotPasswordDto.cs",
+              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\DTOs\\ForgotPasswordDto.cs",
               "RelativeDocumentMoniker": "DrLaundry\\DTOs\\ForgotPasswordDto.cs",
-              "ToolTip": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\DTOs\\ForgotPasswordDto.cs",
+              "ToolTip": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\DTOs\\ForgotPasswordDto.cs",
               "RelativeToolTip": "DrLaundry\\DTOs\\ForgotPasswordDto.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -589,9 +585,9 @@
               "$type": "Document",
               "DocumentIndex": 34,
               "Title": "20260507150731_Intial.cs",
-              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Migrations\\20260507150731_Intial.cs",
+              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Migrations\\20260507150731_Intial.cs",
               "RelativeDocumentMoniker": "DrLaundry\\Migrations\\20260507150731_Intial.cs",
-              "ToolTip": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\Migrations\\20260507150731_Intial.cs",
+              "ToolTip": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\Migrations\\20260507150731_Intial.cs",
               "RelativeToolTip": "DrLaundry\\Migrations\\20260507150731_Intial.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -601,9 +597,9 @@
               "$type": "Document",
               "DocumentIndex": 30,
               "Title": "ResetPasswordDto.cs",
-              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\DTOs\\ResetPasswordDto.cs",
+              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\DTOs\\ResetPasswordDto.cs",
               "RelativeDocumentMoniker": "DrLaundry\\DTOs\\ResetPasswordDto.cs",
-              "ToolTip": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\DTOs\\ResetPasswordDto.cs",
+              "ToolTip": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\DTOs\\ResetPasswordDto.cs",
               "RelativeToolTip": "DrLaundry\\DTOs\\ResetPasswordDto.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAYAAAA/AAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -613,9 +609,9 @@
               "$type": "Document",
               "DocumentIndex": 31,
               "Title": "LoginDto.cs",
-              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\DTOs\\LoginDto.cs",
+              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\DTOs\\LoginDto.cs",
               "RelativeDocumentMoniker": "DrLaundry\\DTOs\\LoginDto.cs",
-              "ToolTip": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\DTOs\\LoginDto.cs",
+              "ToolTip": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\DTOs\\LoginDto.cs",
               "RelativeToolTip": "DrLaundry\\DTOs\\LoginDto.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAUAAAA8AAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -625,9 +621,9 @@
               "$type": "Document",
               "DocumentIndex": 32,
               "Title": "RegisterDto.cs",
-              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\DTOs\\RegisterDto.cs",
+              "DocumentMoniker": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\DTOs\\RegisterDto.cs",
               "RelativeDocumentMoniker": "DrLaundry\\DTOs\\RegisterDto.cs",
-              "ToolTip": "C:\\Users\\PC\\source\\repos\\DrLaundry\\DrLaundry\\DTOs\\RegisterDto.cs",
+              "ToolTip": "C:\\Users\\PC\\source\\repos\\Backend\\DrLaundry\\DrLaundry\\DTOs\\RegisterDto.cs",
               "RelativeToolTip": "DrLaundry\\DTOs\\RegisterDto.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAYAAAA8AAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
