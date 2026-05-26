@@ -1,4 +1,5 @@
-﻿using DrLaundry.Services.Interfaces;
+﻿using DrLaundry.DTOs;
+using DrLaundry.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -28,6 +29,17 @@ namespace DrLaundry.Controllers
             var result = await _profileService.GetMyProfile(userId);
 
             return Ok(result);
+        }
+
+        [HttpPut("update")]
+        public async Task<IActionResult> UpdateProfile(UpdateProfileDto model)
+        {
+            var userId = User.FindFirst("sub")?.Value ?? User.Identity?.Name;
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized("User not authenticated");
+
+            var response = await _profileService.UpdateProfile(userId, model);
+            return Ok(response);
         }
     }
 }

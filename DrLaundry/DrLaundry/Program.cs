@@ -8,17 +8,17 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using StackExchange.Redis;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// =====================
+
 // SERVICES
-// =====================
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
-// ?? Swagger + JWT CONFIG (FIXED)
+// Swagger + JWT CONFIG
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
@@ -54,9 +54,8 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-// =====================
+
 // DEPENDENCY INJECTION
-// =====================
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<JwtHelper>();
 builder.Services.AddScoped<IEmailService, EmailService>();
@@ -65,31 +64,29 @@ builder.Services.AddScoped<IProfileService, ProfileService>();
 builder.Services.AddScoped<IEmailVerificationService, EmailVerificationService>();
 builder.Services.AddScoped<IOtpService, OtpService>();
 
-// =====================
-// DATABASE
-// =====================
+
+// DATABASE (Postgres / Neon)
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(
+    options.UseNpgsql(
         builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// =====================
+
 // IDENTITY
-// =====================
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {
-    options.Password.RequireDigit = false;
-    options.Password.RequireUppercase = false;
-    options.Password.RequireNonAlphanumeric = false;
-    options.Password.RequireLowercase = false;
-    options.Password.RequiredLength = 4;
-    options.Password.RequiredUniqueChars = 0;
+    options.Password.RequireDigit = true;
+    options.Password.RequireUppercase = true;
+    options.Password.RequireNonAlphanumeric = true;
+    options.Password.RequireLowercase = true;
+    options.Password.RequiredLength = 6;
+    options.Password.RequiredUniqueChars = 1;
 })
 .AddEntityFrameworkStores<ApplicationDbContext>()
 .AddDefaultTokenProviders();
 
-// =====================
+
+
 // JWT AUTHENTICATION
-// =====================
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -116,16 +113,15 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
-// =====================
+
 // PIPELINE
-// =====================
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
-// ?? Role seeding
+// Role seeding
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;

@@ -1,5 +1,6 @@
 ﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using DrLaundry.Models;
 using Microsoft.AspNetCore.Identity;
@@ -20,9 +21,11 @@ public class JwtHelper
         _userManager = userManager;
     }
 
+    // =========================
+    // ACCESS TOKEN
+    // =========================
     public async Task<string> GenerateTokenAsync(ApplicationUser user)
     {
-        // 👑 Get user roles from Identity
         var roles = await _userManager.GetRolesAsync(user);
 
         var claims = new List<Claim>
@@ -32,7 +35,6 @@ public class JwtHelper
             new Claim(ClaimTypes.Name, user.UserName ?? string.Empty)
         };
 
-        // 🔥 Add roles into token
         foreach (var role in roles)
         {
             claims.Add(new Claim(ClaimTypes.Role, role));
@@ -53,5 +55,16 @@ public class JwtHelper
         );
 
         return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    // =========================
+    // REFRESH TOKEN
+    // =========================
+    public string GenerateRefreshToken()
+    {
+        var randomBytes = new byte[32];
+        using var rng = RandomNumberGenerator.Create();
+        rng.GetBytes(randomBytes);
+        return Convert.ToBase64String(randomBytes);
     }
 }
