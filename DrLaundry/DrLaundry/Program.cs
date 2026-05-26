@@ -1,4 +1,4 @@
-using DrLaundry.Data;
+﻿using DrLaundry.Data;
 using DrLaundry.Helpers;
 using DrLaundry.Models;
 using DrLaundry.Services;
@@ -8,11 +8,9 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using StackExchange.Redis;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
-
 
 // SERVICES
 builder.Services.AddControllers();
@@ -54,7 +52,6 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-
 // DEPENDENCY INJECTION
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<JwtHelper>();
@@ -64,12 +61,10 @@ builder.Services.AddScoped<IProfileService, ProfileService>();
 builder.Services.AddScoped<IEmailVerificationService, EmailVerificationService>();
 builder.Services.AddScoped<IOtpService, OtpService>();
 
-
 // DATABASE (Postgres / Neon)
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(
         builder.Configuration.GetConnectionString("DefaultConnection")));
-
 
 // IDENTITY
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
@@ -83,8 +78,6 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 })
 .AddEntityFrameworkStores<ApplicationDbContext>()
 .AddDefaultTokenProviders();
-
-
 
 // JWT AUTHENTICATION
 builder.Services.AddAuthentication(options =>
@@ -113,19 +106,19 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
-
 // PIPELINE
-if (app.Environment.IsDevelopment())
+// ✅ Swagger enabled in ALL environments
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "DrLaundry API v1");
+    c.RoutePrefix = "swagger"; // available at /swagger
+});
 
 // Role seeding
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
-
     await RoleSeeder.SeedRolesAsync(services);
     await RoleSeeder.SeedAdminAsync(services);
 }
