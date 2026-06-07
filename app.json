@@ -9,7 +9,10 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "config": {
+        "googleMapsApiKey": "AIzaSyCTuIsYFQ_l_RSsWYhdDqPubgJo9gZCwsI"
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -19,7 +22,13 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.ojamdev.drlaundry",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyCTuIsYFQ_l_RSsWYhdDqPubgJo9gZCwsI"
+        }
+      }
     },
     "web": {
       "output": "static",
@@ -43,6 +52,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "653368fa-fcb9-4f14-937e-cba2c2908c7c"
+      }
     }
   }
 }

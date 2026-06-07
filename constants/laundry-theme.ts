@@ -1,0 +1,86 @@
+export const LaundryTheme = {
+  colors: {
+    primary: "#6D28D9",
+    primaryDark: "#4C1D95",
+    primarySoft: "#EDE9FE",
+    accent: "#C4B5FD",
+    ink: "#1E1433",
+    muted: "#6B5B95",
+    card: "#FFFFFF",
+    border: "#E9DFFF",
+    success: "#0F9D58",
+    warning: "#D97706",
+    danger: "#DC2626",
+    bgStart: "#F7F2FF",
+    bgEnd: "#EEE7FF",
+  },
+  typography: {
+    display: {
+      fontSize: 36,
+      lineHeight: 42,
+      letterSpacing: -0.6,
+      fontWeight: "800" as const,
+    },
+    heading: {
+      fontSize: 24,
+      lineHeight: 30,
+      letterSpacing: -0.4,
+      fontWeight: "800" as const,
+    },
+    body: {
+      fontSize: 15,
+      lineHeight: 22,
+      letterSpacing: 0,
+      fontWeight: "400" as const,
+    },
+    label: {
+      fontSize: 11,
+      lineHeight: 14,
+      letterSpacing: 1.4,
+      fontWeight: "800" as const,
+      textTransform: "uppercase" as const,
+    },
+  },
+  spacing: {
+    xs: 6,
+    sm: 10,
+    md: 16,
+    lg: 22,
+    xl: 30,
+  },
+  radius: {
+    sm: 10,
+    md: 16,
+    lg: 24,
+    pill: 999,
+  },
+  shadow: {
+    soft: {
+      shadowColor: "#6D28D9",
+      shadowOpacity: 0.12,
+      shadowRadius: 14,
+      shadowOffset: { width: 0, height: 8 },
+      elevation: 4,
+    },
+    strong: {
+      shadowColor: "#6D28D9",
+      shadowOpacity: 0.22,
+      shadowRadius: 24,
+      shadowOffset: { width: 0, height: 12 },
+      elevation: 10,
+    },
+  },
+  motion: {
+    fast: 180,
+    medium: 280,
+    slow: 420,
+  },
+  layout: {
+    bottomMenuSpace: 118,
+  },
+  brand: {
+    name: "Dr Laundry",
+    tagline: "Pickup, cleaning, and delivery that feels instant.",
+    promise: "Doorstep laundry with zero hassle.",
+  },
+};
