@@ -1,0 +1,27 @@
+## Visual Studio
+.vs/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## Build results
+bin/
+obj/
+[Bb]in/
+[Oo]bj/
+
+## Debug files
+*.pdb
+*.log
+
+## Entity Framework
+Migrations/*.designer.cs
+
+## ASP.NET
+appsettings.Development.json
+
+## OS files
+.DS_Store
+Thumbs.db

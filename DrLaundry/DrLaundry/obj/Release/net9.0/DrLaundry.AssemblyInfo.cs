@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("DrLaundry")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+01ba18552385453d757274fc63cc0578ebf0bf32")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f95d3ea0d02f4fa005f246ca75968d5492cbb0e1")]
 [assembly: System.Reflection.AssemblyProductAttribute("DrLaundry")]
 [assembly: System.Reflection.AssemblyTitleAttribute("DrLaundry")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -5,15 +5,20 @@
 namespace DrLaundry.Migrations
 {
     /// <inheritdoc />
-    public partial class Email : Migration
+    public partial class Fix : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<string>(
-                name: "EmailVerificationToken",
+            migrationBuilder.RenameColumn(
+                name: "FullName",
                 table: "AspNetUsers",
-                type: "nvarchar(max)",
+                newName: "Name");
+
+            migrationBuilder.AddColumn<string>(
+                name: "Address",
+                table: "AspNetUsers",
+                type: "text",
                 nullable: true);
         }
 
@@ -21,8 +26,13 @@ namespace DrLaundry.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropColumn(
-                name: "EmailVerificationToken",
+                name: "Address",
                 table: "AspNetUsers");
+
+            migrationBuilder.RenameColumn(
+                name: "Name",
+                table: "AspNetUsers",
+                newName: "FullName");
         }
     }
 }

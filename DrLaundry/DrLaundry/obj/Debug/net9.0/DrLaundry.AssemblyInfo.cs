@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("DrLaundry")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+01ba18552385453d757274fc63cc0578ebf0bf32")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+58926ed1b31009c1d20f5c4d46d7f9327066277a")]
 [assembly: System.Reflection.AssemblyProductAttribute("DrLaundry")]
 [assembly: System.Reflection.AssemblyTitleAttribute("DrLaundry")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
