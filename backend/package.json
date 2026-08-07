@@ -1,0 +1,16 @@
+{
+  "name": "dr-laundry-backend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "start": "wrangler dev"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "wrangler": "^4.119.0"
+  },
+  "dependencies": {
+    "dr-laundry": "file:.."
+  }
+}

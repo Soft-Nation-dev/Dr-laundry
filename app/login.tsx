@@ -1,612 +1,880 @@
+import {
+  AuthNotice,
+  type AuthNoticeState,
+} from "@/components/auth-notice";
 import { SoftPressable } from "@/components/soft-pressable";
 import { LaundryTheme } from "@/constants/laundry-theme";
-import { login, register } from "@/lib/auth-api";
+import { login, register, syncCurrentUserProfile } from "@/lib/auth-api";
 import { saveAuthSession } from "@/lib/auth-storage";
 import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Animated,
-    Easing,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  ActivityIndicator,
+  Animated,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TextInputProps,
+  useWindowDimensions,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-type LoginMode = "email" | "phone";
 type AuthMode = "signIn" | "create";
+type RegisterStep = 0 | 1 | 2;
+
+const REGISTER_STEPS = [
+  {
+    eyebrow: "Step 1 of 3",
+    title: "Let’s get acquainted",
+    copy: "Tell us who you are and where to send account updates.",
+  },
+  {
+    eyebrow: "Step 2 of 3",
+    title: "Pickup details",
+    copy: "Add the number and address our laundry team should use.",
+  },
+  {
+    eyebrow: "Step 3 of 3",
+    title: "Secure your account",
+    copy: "Choose a strong password. You’re one tap away from fresh clothes.",
+  },
+] as const;
+
+type AuthInputProps = TextInputProps & {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  trailing?: React.ReactNode;
+};
+
+function AuthInput({ icon, label, trailing, style, ...props }: AuthInputProps) {
+  return (
+    <View style={styles.inputGroup}>
+      <Text style={styles.label}>{label}</Text>
+      <View style={styles.inputShell}>
+        <Ionicons name={icon} size={19} color="#776B91" />
+        <TextInput
+          {...props}
+          placeholderTextColor="#A29AB1"
+          style={[styles.input, style]}
+        />
+        {trailing}
+      </View>
+    </View>
+  );
+}
 
 export default function LoginScreen() {
+  const { height: screenHeight } = useWindowDimensions();
   const [authMode, setAuthMode] = useState<AuthMode>("signIn");
-  const [mode, setMode] = useState<LoginMode>("email");
+  const [registerStep, setRegisterStep] = useState<RegisterStep>(0);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const introOpacity = useRef(new Animated.Value(0)).current;
-  const introOffset = useRef(new Animated.Value(18)).current;
-  const cardScale = useRef(new Animated.Value(0.98)).current;
-
-  const headline = useMemo(() => {
-    if (authMode === "signIn") {
-      const base = mode === "email" ? "Email" : "Phone";
-      return `${base} sign in`;
-    }
-    return "Create account";
-  }, [authMode, mode]);
+  const [notice, setNotice] = useState<AuthNoticeState | null>(null);
+  const screenFade = useRef(new Animated.Value(0)).current;
+  const screenRise = useRef(new Animated.Value(20)).current;
+  const stepOpacity = useRef(new Animated.Value(1)).current;
+  const stepSlide = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(introOpacity, {
+      Animated.timing(screenFade, {
         toValue: 1,
-        duration: LaundryTheme.motion.medium,
+        duration: 420,
         useNativeDriver: true,
       }),
-      Animated.timing(introOffset, {
+      Animated.spring(screenRise, {
         toValue: 0,
-        duration: LaundryTheme.motion.medium,
+        speed: 14,
+        bounciness: 4,
         useNativeDriver: true,
-        easing: Easing.out(Easing.cubic),
-      }),
-      Animated.spring(cardScale, {
-        toValue: 1,
-        useNativeDriver: true,
-        speed: 12,
-        bounciness: 6,
       }),
     ]).start();
-  }, [cardScale, introOffset, introOpacity]);
+  }, [screenFade, screenRise]);
 
-  const handleSubmit = async () => {
-    if (isSubmitting) {
+  const animateStep = (next: RegisterStep, direction: 1 | -1) => {
+    Animated.parallel([
+      Animated.timing(stepOpacity, {
+        toValue: 0,
+        duration: 130,
+        useNativeDriver: true,
+      }),
+      Animated.timing(stepSlide, {
+        toValue: -18 * direction,
+        duration: 130,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setRegisterStep(next);
+      stepSlide.setValue(18 * direction);
+      Animated.parallel([
+        Animated.timing(stepOpacity, {
+          toValue: 1,
+          duration: 220,
+          useNativeDriver: true,
+        }),
+        Animated.spring(stepSlide, {
+          toValue: 0,
+          speed: 18,
+          bounciness: 2,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    });
+  };
+
+  const changeMode = (next: AuthMode) => {
+    setAuthMode(next);
+    setRegisterStep(0);
+    stepOpacity.setValue(1);
+    stepSlide.setValue(0);
+  };
+
+  const showNotice = (
+    title: string,
+    message: string,
+    tone: AuthNoticeState["tone"] = "error",
+    onDismiss?: () => void,
+  ) => {
+    setNotice({ title, message, tone, onDismiss });
+  };
+
+  const validateRegistrationStep = () => {
+    if (registerStep === 0) {
+      if (!fullName.trim() || !email.trim()) {
+        showNotice("A little more info", "Enter your full name and email.");
+        return false;
+      }
+      if (!email.includes("@")) {
+        showNotice("Check your email", "Enter a valid email address.");
+        return false;
+      }
+    }
+
+    if (registerStep === 1 && (!phone.trim() || !address.trim())) {
+      showNotice(
+        "Pickup details needed",
+        "Enter your phone number and address.",
+      );
+      return false;
+    }
+
+    if (registerStep === 2) {
+      if (password.length < 6) {
+        showNotice("Password too short", "Use at least 6 characters.");
+        return false;
+      }
+      if (password !== confirmPassword) {
+        showNotice("Passwords do not match", "Please re-enter your password.");
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  const handlePrimaryAction = async () => {
+    if (isSubmitting) return;
+
+    if (authMode === "create" && registerStep < 2) {
+      if (validateRegistrationStep()) {
+        animateStep((registerStep + 1) as RegisterStep, 1);
+      }
       return;
     }
 
     if (authMode === "signIn") {
-      if (mode === "phone") {
-        Alert.alert(
-          "Not supported",
-          "Phone sign in is not available yet. Please use email.",
-        );
-        return;
-      }
-
       if (!email.trim() || !password) {
-        Alert.alert("Missing info", "Enter your email and password.");
+        showNotice("Missing info", "Enter your email and password.");
         return;
       }
 
       setIsSubmitting(true);
       try {
-        const result = await login({
-          email: email.trim(),
-          password,
-        });
-
+        const result = await login({ email: email.trim(), password });
         if (!result.success || !result.data?.accessToken) {
-          Alert.alert("Sign in failed", result.message);
+          showNotice("Sign in failed", result.message);
           return;
         }
-
         await saveAuthSession({
           accessToken: result.data.accessToken,
           refreshToken: result.data.refreshToken,
           email: email.trim(),
         });
-
         router.replace("/home");
       } finally {
         setIsSubmitting(false);
       }
-
       return;
     }
 
-    if (
-      !fullName.trim() ||
-      !email.trim() ||
-      !phone.trim() ||
-      !address.trim() ||
-      !password
-    ) {
-      Alert.alert("Missing info", "Fill in all the required fields.");
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      Alert.alert("Passwords do not match", "Please confirm your password.");
-      return;
-    }
+    if (!validateRegistrationStep()) return;
 
     setIsSubmitting(true);
     try {
       const result = await register({
-        email: email.trim(),
+        email: email.trim().toLowerCase(),
         password,
         phoneNumber: phone.trim(),
         name: fullName.trim(),
         address: address.trim(),
       });
-
       if (!result.success) {
-        Alert.alert("Sign up failed", result.message);
+        showNotice("Sign up failed", result.message);
         return;
       }
 
-      Alert.alert("Verify your email", result.message || "OTP sent.");
-      router.replace({
-        pathname: "/verify-email",
-        params: { email: email.trim() },
+      if (!result.data.requiresEmailConfirmation) {
+        await syncCurrentUserProfile();
+        showNotice(
+          "Account created",
+          result.message,
+          "success",
+          () => router.replace("/home"),
+        );
+        return;
+      }
+
+      showNotice("Check your email", result.message, "success", () => {
+        router.replace({
+          pathname: "/verify-email",
+          params: { email: email.trim().toLowerCase() },
+        });
       });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  return (
-    <LinearGradient
-      colors={[
-        LaundryTheme.colors.bgStart,
-        "#FFFFFF",
-        LaundryTheme.colors.bgEnd,
-      ]}
-      style={styles.container}
-    >
-      <SafeAreaView
-        edges={["top", "bottom"]}
-        style={[
-          styles.safeArea,
-          authMode === "create" && styles.safeAreaCreate,
-        ]}
-      >
-        <Animated.View
-          style={[
-            styles.hero,
-            { opacity: introOpacity, transform: [{ translateY: introOffset }] },
-          ]}
-        >
-          <View style={styles.brandBadge}>
+  const renderRegisterFields = () => {
+    if (registerStep === 0) {
+      return (
+        <>
+          <AuthInput
+            label="Full name"
+            icon="person-outline"
+            value={fullName}
+            onChangeText={setFullName}
+            placeholder="your full name"
+            autoComplete="name"
+          />
+          <AuthInput
+            label="Email address"
+            icon="mail-outline"
+            value={email}
+            onChangeText={setEmail}
+            placeholder="name@example.com"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="email"
+          />
+        </>
+      );
+    }
+
+    if (registerStep === 1) {
+      return (
+        <>
+          <AuthInput
+            label="Phone number"
+            icon="call-outline"
+            value={phone}
+            onChangeText={setPhone}
+            placeholder="+234 800 000 0000"
+            keyboardType="phone-pad"
+            autoComplete="tel"
+          />
+          <AuthInput
+            label="Pickup address"
+            icon="location-outline"
+            value={address}
+            onChangeText={setAddress}
+            placeholder="12 Kudirat Abiola Way"
+            autoComplete="street-address"
+          />
+          <View style={styles.infoPill}>
             <Ionicons
-              name="water"
-              size={14}
+              name="shield-checkmark-outline"
+              size={17}
               color={LaundryTheme.colors.primaryDark}
             />
-            <Text style={styles.brandBadgeText}>{LaundryTheme.brand.name}</Text>
+            <Text style={styles.infoText}>
+              Your details are only used for pickup and delivery updates.
+            </Text>
           </View>
-          <Text style={styles.kicker}>Welcome back</Text>
-          <Text style={styles.heading}>{headline}</Text>
-          {/* <Text style={styles.subHeading}>
-            {authMode === "signIn"
-              ? "Use either email or phone with your password to pick up right where you left off."
-              : "Create your account with both email and phone so pickup, delivery, and tracking stay in sync."}
-          </Text> */}
-        </Animated.View>
+        </>
+      );
+    }
 
-        {authMode === "signIn" ? (
-          <Animated.View
-            style={[
-              styles.switcher,
-              { opacity: introOpacity, transform: [{ scale: cardScale }] },
-            ]}
-          >
+    return (
+      <>
+        <AuthInput
+          label="Password"
+          icon="lock-closed-outline"
+          value={password}
+          onChangeText={setPassword}
+          placeholder="At least 6 characters"
+          autoCapitalize="none"
+          secureTextEntry={!showPassword}
+          trailing={
             <SoftPressable
-              onPress={() => setMode("email")}
-              style={[
-                styles.switchButton,
-                mode === "email" && styles.switchButtonActive,
-              ]}
+              onPress={() => setShowPassword((visible) => !visible)}
+              style={styles.eyeButton}
             >
               <Ionicons
-                name="mail-outline"
-                size={16}
-                color={mode === "email" ? "#fff" : LaundryTheme.colors.muted}
+                name={showPassword ? "eye-off-outline" : "eye-outline"}
+                size={19}
+                color="#776B91"
               />
-              <Text
-                style={[
-                  styles.switchText,
-                  mode === "email" && styles.switchTextActive,
-                ]}
-              >
-                Email
-              </Text>
             </SoftPressable>
+          }
+        />
+        <AuthInput
+          key={
+            showConfirmPassword
+              ? "confirm-password-visible"
+              : "confirm-password-hidden"
+          }
+          label="Confirm password"
+          icon="checkmark-circle-outline"
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+          placeholder="Type it one more time"
+          autoCapitalize="none"
+          autoComplete="new-password"
+          textContentType="newPassword"
+          secureTextEntry={!showConfirmPassword}
+          trailing={
             <SoftPressable
-              onPress={() => setMode("phone")}
-              style={[
-                styles.switchButton,
-                mode === "phone" && styles.switchButtonActive,
-              ]}
+              onPress={() =>
+                setShowConfirmPassword((visible) => !visible)
+              }
+              style={styles.eyeButton}
             >
               <Ionicons
-                name="call-outline"
-                size={16}
-                color={mode === "phone" ? "#fff" : LaundryTheme.colors.muted}
+                name={
+                  showConfirmPassword ? "eye-off-outline" : "eye-outline"
+                }
+                size={19}
+                color="#776B91"
               />
-              <Text
-                style={[
-                  styles.switchText,
-                  mode === "phone" && styles.switchTextActive,
-                ]}
-              >
-                Phone
-              </Text>
             </SoftPressable>
-          </Animated.View>
-        ) : null}
+          }
+        />
+        <View style={styles.reviewCard}>
+          <View style={styles.reviewIcon}>
+            <Text style={styles.reviewInitial}>
+              {fullName.trim().charAt(0).toUpperCase() || "D"}
+            </Text>
+          </View>
+          <View style={styles.reviewCopy}>
+            <Text style={styles.reviewName}>{fullName}</Text>
+            <Text style={styles.reviewMeta}>{phone}</Text>
+          </View>
+          <Ionicons name="sparkles" size={18} color="#F59E0B" />
+        </View>
+      </>
+    );
+  };
 
-        <Animated.View
-          style={[
-            styles.formCard,
-            {
-              opacity: introOpacity,
-              transform: [{ translateY: introOffset }, { scale: cardScale }],
-            },
-          ]}
+  return (
+    <LinearGradient
+      colors={["#F3F0FF", "#FBFAFF", "#FFFFFF"]}
+      style={styles.container}
+    >
+      <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
+        <KeyboardAvoidingView
+          style={styles.keyboardView}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
-          {authMode === "create" ? (
-            <View style={styles.inputBlock}>
-              <Text style={styles.label}>Full name</Text>
-              <TextInput
-                value={fullName}
-                onChangeText={setFullName}
-                placeholder="Amina Yusuf"
-                placeholderTextColor="#9A8BB8"
-                style={styles.input}
-              />
-            </View>
-          ) : null}
-
-          {authMode === "create" ? (
-            <>
-              <View style={styles.inputBlock}>
-                <Text style={styles.label}>Email address</Text>
-                <TextInput
-                  value={email}
-                  onChangeText={setEmail}
-                  autoCapitalize="none"
-                  keyboardType="email-address"
-                  placeholder="name@example.com"
-                  placeholderTextColor="#9A8BB8"
-                  style={styles.input}
-                />
-              </View>
-              <View style={styles.inputBlock}>
-                <Text style={styles.label}>Phone number</Text>
-                <TextInput
-                  value={phone}
-                  onChangeText={setPhone}
-                  keyboardType="phone-pad"
-                  placeholder="+234 000 000 0000"
-                  placeholderTextColor="#9A8BB8"
-                  style={styles.input}
-                />
-              </View>
-              <View style={styles.inputBlock}>
-                <Text style={styles.label}>Address</Text>
-                <TextInput
-                  value={address}
-                  onChangeText={setAddress}
-                  placeholder="12 Kudirat Abiola Way"
-                  placeholderTextColor="#9A8BB8"
-                  style={styles.input}
-                />
-              </View>
-            </>
-          ) : mode === "email" ? (
-            <View style={styles.inputBlock}>
-              <Text style={styles.label}>Email address</Text>
-              <TextInput
-                value={email}
-                onChangeText={setEmail}
-                autoCapitalize="none"
-                keyboardType="email-address"
-                placeholder="name@example.com"
-                placeholderTextColor="#9A8BB8"
-                style={styles.input}
-              />
-            </View>
-          ) : (
-            <View style={styles.inputBlock}>
-              <Text style={styles.label}>Phone number</Text>
-              <TextInput
-                value={phone}
-                onChangeText={setPhone}
-                keyboardType="phone-pad"
-                placeholder="+234 000 000 0000"
-                placeholderTextColor="#9A8BB8"
-                style={styles.input}
-              />
-            </View>
-          )}
-
-          {authMode === "create" ? (
-            <View style={styles.inputBlock}>
-              <Text style={styles.label}>Confirm password</Text>
-              <TextInput
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                secureTextEntry
-                autoCapitalize="none"
-                placeholder="Re-enter your password"
-                placeholderTextColor="#9A8BB8"
-                style={styles.input}
-              />
-            </View>
-          ) : null}
-
-          <View style={styles.inputBlock}>
-            <Text style={styles.label}>Password</Text>
-            <TextInput
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoCapitalize="none"
-              placeholder="Enter your password"
-              placeholderTextColor="#9A8BB8"
-              style={styles.input}
-            />
-          </View>
-
-          {authMode === "signIn" ? (
-            <SoftPressable
-              onPress={() => router.push("/forgot-password")}
-              style={styles.forgotButton}
-            >
-              <Text style={styles.forgotText}>Forgot password?</Text>
-            </SoftPressable>
-          ) : null}
-
-          <SoftPressable
-            onPress={handleSubmit}
-            style={[styles.cta, isSubmitting && styles.ctaDisabled]}
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
           >
-            {isSubmitting ? (
-              <ActivityIndicator color="#FFFFFF" size="small" />
-            ) : (
-              <Text style={styles.ctaText}>
-                {authMode === "signIn" ? "Continue" : "Create account"}
-              </Text>
-            )}
-          </SoftPressable>
-
-          <Text style={styles.tiny}>
-            {authMode === "signIn"
-              ? "Secure sign in to resume your journey with Dr Laundry."
-              : "By creating an account, you can save addresses, repeat orders, and track every pickup."}
-          </Text>
-
-          <Animated.View
-            style={[
-              styles.segment,
-              { opacity: introOpacity, transform: [{ scale: cardScale }] },
-            ]}
-          >
-            <SoftPressable
-              onPress={() => setAuthMode("signIn")}
-              style={[
-                styles.segmentButton,
-                authMode === "signIn" && styles.segmentButtonActive,
-              ]}
+            <Animated.View
+              style={{
+                opacity: screenFade,
+                transform: [{ translateY: screenRise }],
+              }}
             >
-              <Text
+              <View
                 style={[
-                  styles.segmentText,
-                  authMode === "signIn" && styles.segmentTextActive,
+                  styles.visual,
+                  { height: screenHeight / 3 },
                 ]}
               >
-                Sign in
-              </Text>
-            </SoftPressable>
-            <SoftPressable
-              onPress={() => setAuthMode("create")}
-              style={[
-                styles.segmentButton,
-                authMode === "create" && styles.segmentButtonActive,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.segmentText,
-                  authMode === "create" && styles.segmentTextActive,
-                ]}
-              >
-                Create account
-              </Text>
-            </SoftPressable>
-          </Animated.View>
-        </Animated.View>
+                <Image
+                  source={require("@/assets/images/login image.webp")}
+                  style={styles.heroImage}
+                  contentFit="cover"
+                  transition={250}
+                />
+                <LinearGradient
+                  colors={["transparent", "rgba(32,20,62,0.84)"]}
+                  style={styles.imageShade}
+                />
+                <View style={styles.brandRow}>
+                  <Image
+                    source={require("@/assets/images/logo.jpeg")}
+                    style={styles.logo}
+                    contentFit="cover"
+                  />
+                  <View>
+                    <Text style={styles.brandName}>DR LAUNDRY</Text>
+                    <Text style={styles.brandPromise}>Fast · Fresh · Clean</Text>
+                  </View>
+                </View>
+                <View style={styles.visualCopy}>
+                  <Text style={styles.visualTitle}>
+                    Laundry day,{"\n"}beautifully handled.
+                  </Text>
+                  <Text style={styles.visualSubtitle}>
+                    Doorstep pickup. Expert care. Fresh clothes returned.
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.sheet}>
+                {authMode === "signIn" ? (
+                  <>
+                    <View style={styles.sheetHeader}>
+                      <View>
+                        <Text style={styles.eyebrow}>WELCOME BACK</Text>
+                        <Text style={styles.title}>Sign in</Text>
+                      </View>
+                      <View style={styles.freshBadge}>
+                        <Ionicons name="sparkles" size={15} color="#F59E0B" />
+                        <Text style={styles.freshText}>Stay fresh</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.subtitle}>
+                      Pick up right where you left off.
+                    </Text>
+                    <View style={styles.fields}>
+                      <AuthInput
+                        label="Email address"
+                        icon="mail-outline"
+                        value={email}
+                        onChangeText={setEmail}
+                        placeholder="name@example.com"
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        autoComplete="email"
+                      />
+                      <AuthInput
+                        label="Password"
+                        icon="lock-closed-outline"
+                        value={password}
+                        onChangeText={setPassword}
+                        placeholder="Enter your password"
+                        autoCapitalize="none"
+                        secureTextEntry={!showPassword}
+                        trailing={
+                          <SoftPressable
+                            onPress={() =>
+                              setShowPassword((visible) => !visible)
+                            }
+                            style={styles.eyeButton}
+                          >
+                            <Ionicons
+                              name={
+                                showPassword
+                                  ? "eye-off-outline"
+                                  : "eye-outline"
+                              }
+                              size={19}
+                              color="#776B91"
+                            />
+                          </SoftPressable>
+                        }
+                      />
+                    </View>
+                    <SoftPressable
+                      onPress={() => router.push("/forgot-password")}
+                      style={styles.forgotButton}
+                    >
+                      <Text style={styles.forgotText}>Forgot password?</Text>
+                    </SoftPressable>
+                  </>
+                ) : (
+                  <>
+                    <View style={styles.progressRow}>
+                      {[0, 1, 2].map((step) => (
+                        <View
+                          key={step}
+                          style={[
+                            styles.progressTrack,
+                            step <= registerStep && styles.progressTrackActive,
+                          ]}
+                        />
+                      ))}
+                    </View>
+                    <Animated.View
+                      style={{
+                        opacity: stepOpacity,
+                        transform: [{ translateX: stepSlide }],
+                      }}
+                    >
+                      <Text style={styles.eyebrow}>
+                        {REGISTER_STEPS[registerStep].eyebrow}
+                      </Text>
+                      <Text style={styles.title}>
+                        {REGISTER_STEPS[registerStep].title}
+                      </Text>
+                      <Text style={styles.subtitle}>
+                        {REGISTER_STEPS[registerStep].copy}
+                      </Text>
+                      <View style={styles.fields}>{renderRegisterFields()}</View>
+                    </Animated.View>
+                  </>
+                )}
+
+                <View style={styles.actionRow}>
+                  {authMode === "create" && registerStep > 0 ? (
+                    <SoftPressable
+                      onPress={() =>
+                        animateStep((registerStep - 1) as RegisterStep, -1)
+                      }
+                      style={styles.backButton}
+                    >
+                      <Ionicons
+                        name="arrow-back"
+                        size={20}
+                        color={LaundryTheme.colors.primaryDark}
+                      />
+                    </SoftPressable>
+                  ) : null}
+                  <SoftPressable
+                    onPress={handlePrimaryAction}
+                    style={[
+                      styles.primaryButton,
+                      authMode === "create" &&
+                        registerStep > 0 &&
+                        styles.primaryButtonWithBack,
+                      isSubmitting && styles.buttonDisabled,
+                    ]}
+                  >
+                    {isSubmitting ? (
+                      <ActivityIndicator color="#FFFFFF" size="small" />
+                    ) : (
+                      <>
+                        <Text style={styles.primaryText}>
+                          {authMode === "signIn"
+                            ? "Sign in"
+                            : registerStep < 2
+                              ? "Continue"
+                              : "Create account"}
+                        </Text>
+                        <Ionicons
+                          name="arrow-forward"
+                          size={19}
+                          color="#FFFFFF"
+                        />
+                      </>
+                    )}
+                  </SoftPressable>
+                </View>
+
+                <View style={styles.switchRow}>
+                  <Text style={styles.switchPrompt}>
+                    {authMode === "signIn"
+                      ? "New to Dr Laundry?"
+                      : "Already have an account?"}
+                  </Text>
+                  <SoftPressable
+                    onPress={() =>
+                      changeMode(
+                        authMode === "signIn" ? "create" : "signIn",
+                      )
+                    }
+                  >
+                    <Text style={styles.switchLink}>
+                      {authMode === "signIn" ? "Create account" : "Sign in"}
+                    </Text>
+                  </SoftPressable>
+                </View>
+              </View>
+            </Animated.View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </SafeAreaView>
+      <AuthNotice notice={notice} onClose={() => setNotice(null)} />
     </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: 22,
-    paddingTop: 10,
-    justifyContent: "center",
+  safeArea: { flex: 1 },
+  keyboardView: { flex: 1 },
+  scrollContent: {
+    flexGrow: 1,
+    paddingVertical: 0,
+    justifyContent: "flex-start",
   },
-  safeAreaCreate: {
-    paddingBottom: LaundryTheme.spacing.lg,
+  visual: {
+    overflow: "hidden",
+    backgroundColor: "#30215B",
   },
-  hero: {
-    marginBottom: 18,
+  heroImage: {
+    ...StyleSheet.absoluteFillObject,
+    width: "100%",
+    height: "100%",
   },
-  brandBadge: {
+  imageShade: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  brandRow: {
+    position: "absolute",
+    top: 18,
+    left: 18,
+    right: 18,
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    alignSelf: "flex-start",
-    backgroundColor: "#fff",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: LaundryTheme.colors.border,
-    ...LaundryTheme.shadow.soft,
+    gap: 10,
   },
-  brandBadgeText: {
-    color: LaundryTheme.colors.primaryDark,
-    fontWeight: "800",
+  logo: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.8)",
+  },
+  brandName: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "900",
+    letterSpacing: 1.1,
+  },
+  brandPromise: {
+    color: "rgba(255,255,255,0.76)",
+    fontSize: 10,
+    fontWeight: "700",
+    marginTop: 2,
+  },
+  visualCopy: {
+    position: "absolute",
+    left: 20,
+    right: 20,
+    bottom: 23,
+  },
+  visualTitle: {
+    color: "#FFFFFF",
+    fontSize: 28,
+    lineHeight: 31,
+    fontWeight: "900",
+    letterSpacing: -0.8,
+  },
+  visualSubtitle: {
+    color: "rgba(255,255,255,0.82)",
     fontSize: 12,
+    lineHeight: 17,
+    marginTop: 7,
+    maxWidth: 285,
   },
-  kicker: {
+  sheet: {
+    marginTop: -16,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 28,
+    paddingHorizontal: 20,
+    paddingTop: 23,
+    paddingBottom: 19,
+    shadowColor: "#3B1B71",
+    shadowOpacity: 0.13,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 8,
+  },
+  sheetHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
+  eyebrow: {
+    color: LaundryTheme.colors.primary,
+    fontSize: 10,
+    letterSpacing: 1.5,
+    fontWeight: "900",
+    marginBottom: 5,
     textTransform: "uppercase",
-    letterSpacing: 1.8,
-    color: LaundryTheme.colors.primaryDark,
+  },
+  title: {
+    color: "#231833",
+    fontSize: 26,
+    lineHeight: 31,
+    fontWeight: "900",
+    letterSpacing: -0.7,
+  },
+  subtitle: {
+    color: "#786E88",
+    fontSize: 13,
+    lineHeight: 19,
+    marginTop: 5,
+  },
+  freshBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "#FFF8E6",
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 999,
+  },
+  freshText: {
+    color: "#9A6500",
+    fontSize: 10,
+    fontWeight: "800",
+  },
+  fields: { marginTop: 19 },
+  inputGroup: { marginBottom: 14 },
+  label: {
+    color: "#3D334C",
     fontSize: 11,
     fontWeight: "800",
-    marginBottom: 10,
+    marginBottom: 7,
   },
-  heading: {
-    fontSize: LaundryTheme.typography.display.fontSize,
-    lineHeight: LaundryTheme.typography.display.lineHeight,
-    fontWeight: LaundryTheme.typography.display.fontWeight,
-    color: LaundryTheme.colors.ink,
-    letterSpacing: -0.4,
-  },
-  subHeading: {
-    marginTop: 10,
-    maxWidth: 320,
-    color: LaundryTheme.colors.muted,
-    fontSize: 16,
-    lineHeight: 23,
-  },
-  segment: {
-    flexDirection: "row",
-    gap: 10,
-    backgroundColor: "rgba(255,255,255,0.72)",
-    padding: 6,
-    borderRadius: 18,
+  inputShell: {
+    minHeight: 52,
+    borderRadius: 15,
+    backgroundColor: "#F7F5FA",
     borderWidth: 1,
-    borderColor: LaundryTheme.colors.border,
-    marginTop: 14,
-  },
-  segmentButton: {
-    flex: 1,
-    paddingVertical: 20,
-    borderRadius: 14,
+    borderColor: "#ECE7F2",
+    paddingLeft: 14,
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-  },
-  segmentButtonActive: {
-    backgroundColor: LaundryTheme.colors.primary,
-  },
-  segmentText: {
-    color: LaundryTheme.colors.muted,
-    fontWeight: "800",
-    fontSize: 13,
-  },
-  segmentTextActive: {
-    color: "#fff",
-  },
-  switcher: {
-    flexDirection: "row",
-    gap: 10,
-    backgroundColor: "rgba(255,255,255,0.72)",
-    padding: 6,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: LaundryTheme.colors.border,
-    marginBottom: 16,
-  },
-  switchButton: {
-    flex: 1,
-    paddingVertical: 20,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    flexDirection: "row",
-  },
-  switchButtonActive: {
-    backgroundColor: LaundryTheme.colors.primary,
-  },
-  switchText: {
-    color: LaundryTheme.colors.muted,
-    fontWeight: "700",
-  },
-  switchTextActive: {
-    color: "#fff",
-  },
-  formCard: {
-    backgroundColor: "rgba(255,255,255,0.88)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.95)",
-    borderRadius: 28,
-    padding: 18,
-    shadowColor: "#6D28D9",
-    shadowOpacity: 0.14,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 6,
-  },
-  inputBlock: {
-    marginBottom: 14,
-  },
-  label: {
-    color: LaundryTheme.colors.ink,
-    fontSize: 14,
-    marginBottom: 8,
-    fontWeight: "700",
   },
   input: {
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: LaundryTheme.colors.border,
-    borderRadius: 14,
-    paddingHorizontal: 16,
+    flex: 1,
+    color: "#231833",
+    fontSize: 14,
+    paddingHorizontal: 11,
     paddingVertical: 14,
-    fontSize: 16,
-    color: LaundryTheme.colors.ink,
   },
-  cta: {
-    marginTop: 16,
-    backgroundColor: LaundryTheme.colors.primary,
-    borderRadius: 16,
+  eyeButton: {
+    width: 44,
+    height: 48,
     alignItems: "center",
-    paddingVertical: 16,
-    shadowColor: "#6D28D9",
-    shadowOpacity: 0.22,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 5,
-  },
-  ctaPressed: {
-    opacity: 0.88,
-  },
-  ctaDisabled: {
-    opacity: 0.7,
-  },
-  ctaText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "800",
+    justifyContent: "center",
   },
   forgotButton: {
     alignSelf: "flex-end",
+    marginTop: -3,
   },
   forgotText: {
+    color: LaundryTheme.colors.primary,
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  actionRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 19,
+  },
+  primaryButton: {
+    flex: 1,
+    minHeight: 52,
+    borderRadius: 16,
+    backgroundColor: LaundryTheme.colors.primary,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 9,
+    shadowColor: LaundryTheme.colors.primary,
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 7 },
+    elevation: 5,
+  },
+  primaryButtonWithBack: { flex: 1 },
+  backButton: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: LaundryTheme.colors.primarySoft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  primaryText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "900",
+  },
+  buttonDisabled: { opacity: 0.65 },
+  switchRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 5,
+    marginTop: 17,
+  },
+  switchPrompt: { color: "#8A8196", fontSize: 12 },
+  switchLink: {
+    color: LaundryTheme.colors.primary,
+    fontSize: 13,
+    fontWeight: "900",
+  },
+  progressRow: {
+    flexDirection: "row",
+    gap: 7,
+    marginBottom: 20,
+  },
+  progressTrack: {
+    flex: 1,
+    height: 5,
+    borderRadius: 999,
+    backgroundColor: "#ECE8F3",
+  },
+  progressTrackActive: {
+    backgroundColor: LaundryTheme.colors.primary,
+  },
+  infoPill: {
+    flexDirection: "row",
+    gap: 9,
+    alignItems: "center",
+    padding: 12,
+    borderRadius: 14,
+    backgroundColor: LaundryTheme.colors.primarySoft,
+  },
+  infoText: {
+    flex: 1,
     color: LaundryTheme.colors.primaryDark,
+    fontSize: 12,
+    lineHeight: 15,
     fontWeight: "700",
-    fontSize: 12,
   },
-  tiny: {
-    marginTop: 14,
-    textAlign: "center",
-    color: LaundryTheme.colors.muted,
-    fontSize: 12,
-    lineHeight: 18,
+  reviewCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 12,
+    borderRadius: 16,
+    backgroundColor: "#F8F6FB",
+    borderWidth: 1,
+    borderColor: "#ECE7F2",
   },
+  reviewIcon: {
+    width: 39,
+    height: 39,
+    borderRadius: 13,
+    backgroundColor: LaundryTheme.colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  reviewInitial: { color: "#FFFFFF", fontWeight: "900" },
+  reviewCopy: { flex: 1, marginLeft: 10 },
+  reviewName: { color: "#2A2037", fontSize: 12, fontWeight: "800" },
+  reviewMeta: { color: "#8A8196", fontSize: 10, marginTop: 2 },
 });

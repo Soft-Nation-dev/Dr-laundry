@@ -1,11 +1,10 @@
-import { SoftPressable } from "@/components/soft-pressable";
 import { LaundryTheme } from "@/constants/laundry-theme";
-import { getOrderById, updateOrderStatus } from "@/lib/order-storage";
+import { getOrderById } from "@/lib/order-storage";
 import { formatDateTime, getOrderStatusLabel, hoursUntil } from "@/lib/pricing";
 import { OrderRecord, OrderStatus } from "@/types/order";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { router, useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
     ActivityIndicator,
@@ -37,16 +36,6 @@ function statusRank(status: OrderStatus): number {
     default:
       return 0;
   }
-}
-
-function nextStatus(status: OrderStatus): OrderStatus {
-  if (status === "pickup-confirmed") {
-    return "processing";
-  }
-  if (status === "processing") {
-    return "out-for-delivery";
-  }
-  return "delivered";
 }
 
 function timelineFor(order: OrderRecord): TimelineRow[] {
@@ -83,7 +72,6 @@ export default function TrackOrderScreen() {
   const { orderId } = useLocalSearchParams<{ orderId?: string }>();
   const [order, setOrder] = useState<OrderRecord | null>(null);
   const [loadingOrder, setLoadingOrder] = useState(true);
-  const [updatingStatus, setUpdatingStatus] = useState(false);
 
   const introOpacity = useRef(new Animated.Value(0)).current;
   const introOffset = useRef(new Animated.Value(16)).current;
@@ -134,42 +122,6 @@ export default function TrackOrderScreen() {
   }, [order]);
 
   const etaHours = order ? hoursUntil(order.promisedDeliveryISO) : 0;
-
-  const handleAdvance = async () => {
-    if (!order || !orderId || updatingStatus) {
-      return;
-    }
-
-    const targetStatus = nextStatus(order.status);
-    setUpdatingStatus(true);
-
-    const updated = await updateOrderStatus(orderId, targetStatus);
-    setUpdatingStatus(false);
-
-    if (!updated) {
-      return;
-    }
-
-    if (updated.status === "delivered") {
-      router.replace({
-        pathname: "/order-complete",
-        params: { orderId: updated.id },
-      });
-      return;
-    }
-
-    setOrder(updated);
-  };
-
-  const actionLabel = order
-    ? order.status === "pickup-confirmed"
-      ? "Set as Processing"
-      : order.status === "processing"
-        ? "Set as Out for Delivery"
-        : order.status === "out-for-delivery"
-          ? "Mark as Delivered"
-          : "Delivered"
-    : "Update";
 
   return (
     <LinearGradient
@@ -287,21 +239,6 @@ export default function TrackOrderScreen() {
           )}
         </ScrollView>
 
-        {order ? (
-          <SoftPressable
-            onPress={handleAdvance}
-            style={[
-              styles.cta,
-              order.status === "delivered" && styles.ctaDisabled,
-            ]}
-          >
-            {updatingStatus ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.ctaText}>{actionLabel}</Text>
-            )}
-          </SoftPressable>
-        ) : null}
       </SafeAreaView>
     </LinearGradient>
   );
@@ -465,24 +402,6 @@ const styles = StyleSheet.create({
     width: 2,
     bottom: 6,
     backgroundColor: "#E7DEF9",
-  },
-  cta: {
-    position: "absolute",
-    bottom: LaundryTheme.layout.bottomMenuSpace + 8,
-    left: 22,
-    right: 22,
-    backgroundColor: LaundryTheme.colors.primary,
-    borderRadius: 18,
-    paddingVertical: 16,
-    alignItems: "center",
-    ...LaundryTheme.shadow.strong,
-  },
-  ctaDisabled: {
-    opacity: 0.6,
-  },
-  ctaText: {
-    color: "#fff",
-    fontWeight: "800",
   },
   loadingCard: {
     marginTop: 24,

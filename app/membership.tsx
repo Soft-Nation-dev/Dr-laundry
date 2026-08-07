@@ -67,7 +67,12 @@ export default function MembershipScreen() {
       </ScrollView>
 
       <SoftPressable
-        onPress={() => router.push("/new-order")}
+        onPress={() =>
+          router.push({
+            pathname: "/new-order",
+            params: { express: "true" },
+          })
+        }
         style={styles.button}
       >
         <Text style={styles.buttonText}>View price list / Start order</Text>
@@ -120,16 +125,16 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: "center",
   },
-  heroTitle: { color: "#fff", fontSize: 18, fontWeight: "800", marginTop: 8 },
-  heroSub: { color: "#E8F1FF", marginTop: 6 },
+  heroTitle: { color: "#fff", fontSize: 20, fontWeight: "800", marginTop: 8 },
+  heroSub: { color: "#E8F1FF", marginTop: 6, fontSize: 15 },
   featureCard: {
     marginTop: 14,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: LaundryTheme.colors.border,
     backgroundColor: "#fff",
-    padding: 12,
-    gap: 8,
+    padding: 16,
+    gap: 10,
   },
   featureRow: {
     flexDirection: "row",
@@ -139,6 +144,7 @@ const styles = StyleSheet.create({
   featureText: {
     color: LaundryTheme.colors.ink,
     fontWeight: "700",
+    fontSize: 15,
   },
   priceCard: {
     marginTop: 14,
@@ -146,41 +152,46 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: LaundryTheme.colors.border,
     backgroundColor: "#fff",
-    padding: 12,
+    padding: 16,
   },
   priceTitle: {
     color: LaundryTheme.colors.ink,
     fontWeight: "800",
-    fontSize: 16,
+    fontSize: 18,
   },
   priceLine: {
     marginTop: 6,
     color: LaundryTheme.colors.muted,
     fontWeight: "700",
+    fontSize: 14,
   },
   priceFormula: {
     marginTop: 8,
     color: LaundryTheme.colors.primaryDark,
     fontWeight: "800",
+    fontSize: 14,
   },
   sample: {
     marginTop: 6,
     color: LaundryTheme.colors.ink,
     fontWeight: "700",
+    fontSize: 15,
   },
   short: {
     marginTop: 12,
     color: LaundryTheme.colors.muted,
     fontWeight: "700",
+    fontSize: 15,
+    lineHeight: 20,
   },
   button: {
     marginTop: 10,
-    marginBottom: LaundryTheme.layout.bottomMenuSpace - 20,
+    marginBottom: LaundryTheme.layout.bottomMenuSpace + 10,
     backgroundColor: LaundryTheme.colors.primary,
-    paddingVertical: 14,
+    paddingVertical: 15,
     borderRadius: 14,
     alignItems: "center",
     ...LaundryTheme.shadow.soft,
   },
-  buttonText: { color: "#fff", fontWeight: "800" },
+  buttonText: { color: "#fff", fontWeight: "800", fontSize: 16 },
 });

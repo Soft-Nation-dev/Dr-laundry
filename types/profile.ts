@@ -3,6 +3,7 @@ export type Profile = {
   email: string;
   phoneNumber: string;
   address: string;
+  avatarUrl: string;
 };
 
 export type UpdateProfileInput = {

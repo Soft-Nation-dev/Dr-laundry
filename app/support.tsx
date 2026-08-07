@@ -3,13 +3,30 @@ import { LaundryTheme } from "@/constants/laundry-theme";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import { StyleSheet, Text, View } from "react-native";
+import { Linking, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+const supportPhone = process.env.EXPO_PUBLIC_SUPPORT_PHONE ?? "+2349000000000";
+const supportEmail = process.env.EXPO_PUBLIC_SUPPORT_EMAIL ?? "help@drlaundry.app";
 const supportItems = [
-  { icon: "logo-whatsapp", title: "WhatsApp", subtitle: "+234 900 000 0000" },
-  { icon: "call-outline", title: "Call", subtitle: "Mon - Sun, 7am - 10pm" },
-  { icon: "mail-outline", title: "Email", subtitle: "help@drlaundry.app" },
+  {
+    icon: "logo-whatsapp",
+    title: "WhatsApp",
+    subtitle: supportPhone,
+    url: `https://wa.me/${supportPhone.replace(/\D/g, "")}`,
+  },
+  {
+    icon: "call-outline",
+    title: "Call",
+    subtitle: "Mon - Sun, 7am - 10pm",
+    url: `tel:${supportPhone}`,
+  },
+  {
+    icon: "mail-outline",
+    title: "Email",
+    subtitle: supportEmail,
+    url: `mailto:${supportEmail}`,
+  },
 ];
 
 export default function SupportScreen() {
@@ -45,7 +62,11 @@ export default function SupportScreen() {
 
         <View style={styles.list}>
           {supportItems.map((item) => (
-            <View key={item.title} style={styles.card}>
+            <SoftPressable
+              key={item.title}
+              onPress={() => Linking.openURL(item.url)}
+              style={styles.card}
+            >
               <View style={styles.iconWrap}>
                 <Ionicons
                   name={item.icon as any}
@@ -57,7 +78,12 @@ export default function SupportScreen() {
                 <Text style={styles.cardTitle}>{item.title}</Text>
                 <Text style={styles.cardSubtitle}>{item.subtitle}</Text>
               </View>
-            </View>
+              <Ionicons
+                name="chevron-forward"
+                size={16}
+                color={LaundryTheme.colors.muted}
+              />
+            </SoftPressable>
           ))}
         </View>
       </SafeAreaView>

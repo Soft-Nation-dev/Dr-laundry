@@ -1,17 +1,21 @@
+import {
+  AuthNotice,
+  type AuthNoticeState,
+} from "@/components/auth-notice";
 import { SoftPressable } from "@/components/soft-pressable";
 import { LaundryTheme } from "@/constants/laundry-theme";
-import { resendVerification, verifyEmail } from "@/lib/auth-api";
+import { resendVerification } from "@/lib/auth-api";
 import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  ActivityIndicator,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -22,46 +26,27 @@ export default function VerifyEmailScreen() {
   }, [emailParam]);
 
   const [email, setEmail] = useState(initialEmail);
-  const [code, setCode] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResending, setIsResending] = useState(false);
+  const [resendCountdown, setResendCountdown] = useState(60);
+  const [notice, setNotice] = useState<AuthNoticeState | null>(null);
 
-  const handleVerify = async () => {
-    if (isSubmitting) {
-      return;
-    }
-
-    if (!email.trim() || !code.trim()) {
-      Alert.alert("Missing info", "Enter both email and code.");
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      const result = await verifyEmail({
-        email: email.trim(),
-        code: code.trim(),
-      });
-
-      if (!result.success) {
-        Alert.alert("Verification failed", result.message);
-        return;
-      }
-
-      Alert.alert("Email verified", result.message || "You can sign in now.");
-      router.replace("/login");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  useEffect(() => {
+    if (resendCountdown <= 0) return;
+    const timer = setTimeout(() => {
+      setResendCountdown((seconds) => Math.max(0, seconds - 1));
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [resendCountdown]);
 
   const handleResend = async () => {
-    if (isResending) {
-      return;
-    }
+    if (isResending || resendCountdown > 0) return;
 
     if (!email.trim()) {
-      Alert.alert("Missing info", "Enter your email to resend code.");
+      setNotice({
+        title: "Missing email",
+        message: "Enter your email to resend the confirmation link.",
+        tone: "error",
+      });
       return;
     }
 
@@ -69,11 +54,22 @@ export default function VerifyEmailScreen() {
     try {
       const result = await resendVerification({ email: email.trim() });
       if (!result.success) {
-        Alert.alert("Resend failed", result.message);
+        setNotice({
+          title: "Could not resend",
+          message: result.message,
+          tone: "error",
+        });
         return;
       }
 
-      Alert.alert("Sent", result.message || "Verification code sent.");
+      setResendCountdown(60);
+      setNotice({
+        title: "Link sent",
+        message:
+          result.message ||
+          "A new confirmation link is on its way to your inbox.",
+        tone: "success",
+      });
     } finally {
       setIsResending(false);
     }
@@ -91,7 +87,7 @@ export default function VerifyEmailScreen() {
       <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
         <View style={styles.header}>
           <SoftPressable
-            onPress={() => router.back()}
+            onPress={() => router.replace("/login")}
             style={styles.roundButton}
           >
             <Ionicons
@@ -105,6 +101,18 @@ export default function VerifyEmailScreen() {
         </View>
 
         <View style={styles.card}>
+          <View style={styles.mailIcon}>
+            <Image
+              source={require("@/assets/images/logo.jpeg")}
+              style={styles.logo}
+              contentFit="cover"
+            />
+          </View>
+          <Text style={styles.cardTitle}>Check your inbox</Text>
+          <Text style={styles.cardCopy}>
+            Tap the confirmation link in the email from Dr Laundry. It will
+            bring you back to the app and sign you in securely.
+          </Text>
           <View style={styles.inputBlock}>
             <Text style={styles.label}>Email</Text>
             <TextInput
@@ -117,35 +125,12 @@ export default function VerifyEmailScreen() {
               style={styles.input}
             />
           </View>
-          <View style={styles.inputBlock}>
-            <Text style={styles.label}>Verification code</Text>
-            <TextInput
-              value={code}
-              onChangeText={setCode}
-              keyboardType="number-pad"
-              placeholder="123456"
-              placeholderTextColor="#9A8BB8"
-              style={styles.input}
-            />
-          </View>
-
-          <SoftPressable
-            onPress={handleVerify}
-            style={[
-              styles.primaryButton,
-              isSubmitting && styles.buttonDisabled,
-            ]}
-          >
-            {isSubmitting ? (
-              <ActivityIndicator color="#FFFFFF" size="small" />
-            ) : (
-              <Text style={styles.primaryText}>Verify email</Text>
-            )}
-          </SoftPressable>
-
           <SoftPressable
             onPress={handleResend}
-            style={[styles.ghostButton, isResending && styles.buttonDisabled]}
+            style={[
+              styles.ghostButton,
+              (isResending || resendCountdown > 0) && styles.buttonDisabled,
+            ]}
           >
             {isResending ? (
               <ActivityIndicator
@@ -153,11 +138,16 @@ export default function VerifyEmailScreen() {
                 size="small"
               />
             ) : (
-              <Text style={styles.ghostText}>Resend code</Text>
+              <Text style={styles.ghostText}>
+                {resendCountdown > 0
+                  ? `Resend available in 0:${String(resendCountdown).padStart(2, "0")}`
+                  : "Resend confirmation link"}
+              </Text>
             )}
           </SoftPressable>
         </View>
       </SafeAreaView>
+      <AuthNotice notice={notice} onClose={() => setNotice(null)} />
     </LinearGradient>
   );
 }
@@ -196,6 +186,35 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E6EAF2",
     padding: 18,
+  },
+  mailIcon: {
+    width: 68,
+    height: 68,
+    borderRadius: 22,
+    backgroundColor: LaundryTheme.colors.primarySoft,
+    alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "center",
+  },
+  logo: {
+    width: 68,
+    height: 68,
+    borderRadius: 22,
+  },
+  cardTitle: {
+    marginTop: 14,
+    textAlign: "center",
+    color: LaundryTheme.colors.ink,
+    fontSize: 20,
+    fontWeight: "800",
+  },
+  cardCopy: {
+    marginTop: 8,
+    marginBottom: 20,
+    textAlign: "center",
+    color: LaundryTheme.colors.muted,
+    fontSize: 14,
+    lineHeight: 21,
   },
   inputBlock: {
     marginBottom: 14,

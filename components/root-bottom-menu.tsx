@@ -55,6 +55,7 @@ function resolveActiveKey(pathname: string): MenuItem["key"] | null {
   }
   if (
     pathname.startsWith("/profile") ||
+    pathname.startsWith("/settings") ||
     pathname.startsWith("/membership") ||
     pathname.startsWith("/support")
   ) {
@@ -158,6 +159,7 @@ const styles = StyleSheet.create({
   shell: {
     marginHorizontal: 14,
     marginBottom: 10,
+    // marginTop: 100,
   },
   bar: {
     height: 70,

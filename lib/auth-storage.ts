@@ -1,34 +1,34 @@
-import type { AuthSession } from "@/types/auth";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-
-const ACCESS_TOKEN_KEY = "dl_access_token_v1";
-const REFRESH_TOKEN_KEY = "dl_refresh_token_v1";
-const AUTH_EMAIL_KEY = "dl_auth_email_v1";
-
-export async function saveAuthSession(session: AuthSession): Promise<void> {
-  await AsyncStorage.multiSet([
-    [ACCESS_TOKEN_KEY, session.accessToken],
-    [REFRESH_TOKEN_KEY, session.refreshToken],
-    [AUTH_EMAIL_KEY, session.email],
-  ]);
-}
+import { supabase } from "@/lib/supabase-client";
 
 export async function getAccessToken(): Promise<string | null> {
-  return AsyncStorage.getItem(ACCESS_TOKEN_KEY);
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  return session?.access_token ?? null;
 }
 
 export async function getRefreshToken(): Promise<string | null> {
-  return AsyncStorage.getItem(REFRESH_TOKEN_KEY);
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  return session?.refresh_token ?? null;
 }
 
 export async function getAuthEmail(): Promise<string | null> {
-  return AsyncStorage.getItem(AUTH_EMAIL_KEY);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return user?.email ?? null;
+}
+
+export async function saveAuthSession(session: {
+  accessToken: string;
+  refreshToken: string;
+  email: string;
+}): Promise<void> {
+  // Supabase auth handles session storage internally automatically.
 }
 
 export async function clearAuthSession(): Promise<void> {
-  await AsyncStorage.multiRemove([
-    ACCESS_TOKEN_KEY,
-    REFRESH_TOKEN_KEY,
-    AUTH_EMAIL_KEY,
-  ]);
+  await supabase.auth.signOut();
 }

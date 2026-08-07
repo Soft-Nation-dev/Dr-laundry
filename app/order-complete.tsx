@@ -1,6 +1,6 @@
 import { SoftPressable } from "@/components/soft-pressable";
 import { LaundryTheme } from "@/constants/laundry-theme";
-import { getOrderById, updateOrderStatus } from "@/lib/order-storage";
+import { getOrderById } from "@/lib/order-storage";
 import {
   formatDateTime,
   formatNaira,
@@ -69,12 +69,7 @@ export default function OrderCompleteScreen() {
         return;
       }
 
-      if (existing.status !== "delivered") {
-        const delivered = await updateOrderStatus(orderId, "delivered");
-        setOrder(delivered ?? existing);
-      } else {
-        setOrder(existing);
-      }
+      setOrder(existing);
 
       setLoadingOrder(false);
 
