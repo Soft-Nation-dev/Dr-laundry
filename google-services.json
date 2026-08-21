@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "89315719409",
+    "project_id": "dr-laundry-4bcb6",
+    "storage_bucket": "dr-laundry-4bcb6.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:89315719409:android:2ed1d50c48854b01731150",
+        "android_client_info": {
+          "package_name": "com.ojamdev.drlaundry"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAM9qhRjckzyjhSclj3IaeM0rG8HkUgfJ4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

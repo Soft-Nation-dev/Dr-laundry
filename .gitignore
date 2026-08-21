@@ -34,6 +34,7 @@ yarn-error.*
 .env*.local
 .env
 .dev.vars
+dr-laundry-4bcb6-firebase-adminsdk-fbsvc-df15bdb4b1.json
 
 # typescript
 *.tsbuildinfo

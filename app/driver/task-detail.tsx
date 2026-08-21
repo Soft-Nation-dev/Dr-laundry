@@ -1,394 +1,179 @@
+import { ConfirmationDialog } from "@/components/confirmation-dialog";
+import { AppToast, type AppToastMessage } from "@/components/app-toast";
 import { SoftPressable } from "@/components/soft-pressable";
 import { LaundryTheme } from "@/constants/laundry-theme";
+import { useDriverLocationPublisher } from "@/hooks/use-driver-location-publisher";
+import { useLiveTracking } from "@/hooks/use-live-tracking";
+import { getDriverTask, markDriverOrderPaid, performDriverTaskAction, startDriverCustomerContact, type DriverTask, type DriverTaskAction } from "@/lib/driver-api";
+import { getActiveDriverJourney, startDriverLocationSharing, stopDriverLocationSharing } from "@/lib/driver-location-task";
+import { formatNaira } from "@/lib/pricing";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useState } from "react";
-import { Alert, StyleSheet, Text, View } from "react-native";
-import MapView, { Marker, Polyline } from "react-native-maps";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, Alert, Linking, Modal, ScrollView, StyleSheet, Text, View } from "react-native";
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-type DriverTask = {
-  id: string;
-  type: "pickup" | "delivery";
-  customerName: string;
-  phoneNumber: string;
-  address: string;
-  timeSlot: string;
-  latitude: number;
-  longitude: number;
-};
+const ENUGU = { latitude: 6.4584, longitude: 7.5464 };
 
-const mockTasks: Record<string, DriverTask> = {
-  "TASK-101": {
-    id: "TASK-101",
-    type: "pickup",
-    customerName: "Nnamdi Ezenwachi",
-    phoneNumber: "+234 809 341 2278",
-    address: "12 Okpara Avenue, Independence Layout, Enugu",
-    timeSlot: "Today, 10:00 AM - 12:00 PM",
-    latitude: 6.4425,
-    longitude: 7.4983,
-  },
-  "TASK-102": {
-    id: "TASK-102",
-    type: "delivery",
-    customerName: "Adaeze Onyekachi",
-    phoneNumber: "+234 812 567 9034",
-    address: "8 Ogui Road, New Haven, Enugu",
-    timeSlot: "Today, 3:00 PM - 5:00 PM",
-    latitude: 6.4561,
-    longitude: 7.5094,
-  },
-  "TASK-103": {
-    id: "TASK-103",
-    type: "pickup",
-    customerName: "Emeka Ugwuanyi",
-    phoneNumber: "+234 803 812 6650",
-    address: "23 Agbani Road, Uwani, Enugu",
-    timeSlot: "Tomorrow, 10:00 AM - 12:00 PM",
-    latitude: 6.4198,
-    longitude: 7.5042,
-  },
-};
-
-type TaskStatus = "available" | "accepted" | "arrived" | "completed";
+function nextAction(task: DriverTask): { action: DriverTaskAction; label: string } | null {
+  if (task.status === "available") return { action: "accept", label: "Accept Task" };
+  if (task.status === "accepted") return { action: "arrive", label: "I’ve Arrived" };
+  if (task.status === "arrived") return { action: "complete", label: task.type === "pickup" ? "Confirm Pickup" : "Confirm Delivery" };
+  return null;
+}
 
 export default function TaskDetailScreen() {
-  const { taskId } = useLocalSearchParams<{ taskId?: string }>();
+  const { taskId, completedType } = useLocalSearchParams<{ taskId?: string; completedType?: "pickup" | "delivery" }>();
   const [task, setTask] = useState<DriverTask | null>(null);
-  const [status, setStatus] = useState<TaskStatus>("available");
+  const [loading, setLoading] = useState(true);
+  const [working, setWorking] = useState(false);
+  const [error, setError] = useState("");
+  const [sharing, setSharing] = useState(false);
+  const [backgroundEnabled, setBackgroundEnabled] = useState(false);
+  const [showLocationDisclosure, setShowLocationDisclosure] = useState(false);
+  const [startingLocation, setStartingLocation] = useState(false);
+  const [fullScreenMap, setFullScreenMap] = useState(false);
+  const [contacting, setContacting] = useState<"call" | "sms" | null>(null);
+  const [toast, setToast] = useState<AppToastMessage | null>(null);
+  const dismissToast = useCallback(() => setToast(null), []);
+  const mapRef = useRef<MapView | null>(null);
+  const fullMapRef = useRef<MapView | null>(null);
 
-  // Simulated Driver starting point
-  const driverStart = {
-    latitude: (task?.latitude ?? 6.558) - 0.015,
-    longitude: (task?.longitude ?? 3.375) + 0.012,
-  };
+  const load = useCallback(async () => {
+    if (!taskId) { setError("This task link is incomplete."); setLoading(false); return; }
+    setError("");
+    const result = await getDriverTask(taskId, completedType);
+    if (result.success) setTask(result.data);
+    else setError(result.message);
+    setLoading(false);
+  }, [completedType, taskId]);
+
+  useEffect(() => { void load(); }, [load]);
 
   useEffect(() => {
-    if (taskId && mockTasks[taskId]) {
-      setTask(mockTasks[taskId]);
-    } else {
-      setTask(mockTasks["TASK-101"]); // Fallback
-    }
+    void getActiveDriverJourney().then((journey) => {
+      const isCurrentJourney = Boolean(taskId && journey?.orderId === taskId);
+      setSharing(isCurrentJourney);
+      setBackgroundEnabled(Boolean(isCurrentJourney && journey?.backgroundEnabled));
+    });
   }, [taskId]);
 
-  if (!task) {
-    return null;
-  }
+  const action = task ? nextAction(task) : null;
+  const customerPoint = useMemo(() => ({ latitude: task?.latitude ?? ENUGU.latitude, longitude: task?.longitude ?? ENUGU.longitude }), [task?.latitude, task?.longitude]);
+  const liveTracking = useLiveTracking(task?.id);
+  const publisher = useDriverLocationPublisher(task?.id, sharing);
+  const hasDriverLocation = Boolean(publisher.point || liveTracking.location);
+  const driverPoint = useMemo(
+    () => publisher.point ?? liveTracking.location ?? { latitude: customerPoint.latitude - 0.012, longitude: customerPoint.longitude + 0.01 },
+    [customerPoint.latitude, customerPoint.longitude, liveTracking.location, publisher.point],
+  );
+  const mapRoute = liveTracking.routePoints;
+  const routeCoordinates = useMemo(() => mapRoute.length > 1 ? mapRoute : hasDriverLocation ? [driverPoint, customerPoint] : [customerPoint], [customerPoint, driverPoint, hasDriverLocation, mapRoute]);
+  const fitMap = useCallback((map: MapView | null) => {
+    if (!map || routeCoordinates.length < 2) return;
+    map.fitToCoordinates(routeCoordinates, { edgePadding: { top: 70, right: 45, bottom: 70, left: 45 }, animated: true });
+  }, [routeCoordinates]);
 
-  const handleAction = () => {
-    if (status === "available") {
-      setStatus("accepted");
-      Alert.alert("Task Accepted", "Navigate to customer address to proceed.");
-    } else if (status === "accepted") {
-      setStatus("arrived");
-      Alert.alert("Arrived", "Confirm you have reached the customer location.");
-    } else if (status === "arrived") {
-      setStatus("completed");
-      Alert.alert(
-        task.type === "pickup" ? "Pickup Confirmed" : "Delivery Confirmed",
-        "Task marked as completed successfully."
-      );
+  useEffect(() => {
+    if (mapRoute.length > 1) fitMap(mapRef.current);
+    if (fullScreenMap) fitMap(fullMapRef.current);
+  }, [fitMap, fullScreenMap, mapRoute.length]);
+
+  const beginLocationSharing = async () => {
+    if (!task || startingLocation) return;
+    setStartingLocation(true);
+    try {
+      const result = await startDriverLocationSharing(task.id);
+      setSharing(true);
+      setBackgroundEnabled(result.backgroundEnabled);
+      setShowLocationDisclosure(false);
+    } catch (locationError) {
+      Alert.alert("Location sharing not started", locationError instanceof Error ? locationError.message : "Check location permissions and try again.");
+    } finally {
+      setStartingLocation(false);
     }
   };
 
-  const getActionLabel = () => {
-    switch (status) {
-      case "available":
-        return "Accept Task";
-      case "accepted":
-        return "Arrived at Location";
-      case "arrived":
-        return task.type === "pickup" ? "Confirm Pickup" : "Confirm Delivery";
-      case "completed":
-        return "Task Completed";
-      default:
-        return "Action";
+  const handleAction = async () => {
+    if (!task || !action || working) return;
+    setWorking(true);
+    const result = await performDriverTaskAction(task.id, action.action);
+    setWorking(false);
+    if (!result.success) { Alert.alert("Task not updated", result.message); return; }
+    setTask(result.data);
+    if (action.action === "accept") setShowLocationDisclosure(true);
+    if (action.action === "complete") {
+      await stopDriverLocationSharing(task.id);
+      setSharing(false);
+      setBackgroundEnabled(false);
     }
   };
 
-  const handleContact = (type: "call" | "sms") => {
+  const confirmPaymentCollected = () => {
+    if (!task || working) return;
     Alert.alert(
-      type === "call" ? "Calling Customer" : "Sending SMS",
-      `${type === "call" ? "Dialing" : "Sms to"} ${task.customerName} (${task.phoneNumber})`
+      "Confirm payment collected",
+      `Record ${formatNaira(task.paidAmount)} as paid? Your account will be permanently attached to this audit record.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Record payment", onPress: async () => {
+          setWorking(true);
+          const result = await markDriverOrderPaid(task.id);
+          setWorking(false);
+          if (!result.success) { Alert.alert("Payment not recorded", result.message); return; }
+          await load();
+        } },
+      ],
     );
   };
 
+  const contact = async (kind: "call" | "sms") => {
+    if (!task || contacting) return;
+    setContacting(kind);
+    const result = await startDriverCustomerContact(task.id, kind);
+    setContacting(null);
+    if (!result.success || !result.data?.uri) {
+      setToast({ id: Date.now(), title: kind === "call" ? "Call unavailable" : "Text unavailable", message: result.message || "Customer contact could not be opened.", tone: "error" });
+      return;
+    }
+    try { await Linking.openURL(result.data.uri); }
+    catch { setToast({ id: Date.now(), title: "Couldn’t open this action", message: kind === "call" ? "No dialer is available on this device." : "No messaging app is available on this device.", tone: "error" }); }
+  };
+
+  if (loading) return <LinearGradient colors={["#26104B", "#100621", "#07030F"]} style={styles.container}><SafeAreaView style={styles.center}><ActivityIndicator size="large" color="#B887F0" /><Text style={styles.stateText}>Loading task…</Text></SafeAreaView></LinearGradient>;
+  if (!task || error) return <LinearGradient colors={["#26104B", "#100621", "#07030F"]} style={styles.container}><SafeAreaView style={styles.center}><Ionicons name="alert-circle-outline" size={36} color="#FF9BB2" /><Text style={styles.stateTitle}>Task unavailable</Text><Text style={styles.stateText}>{error || "This task is no longer in the active queue."}</Text><SoftPressable onPress={() => router.back()} style={styles.backToTasks}><Text style={styles.backToTasksText}>Back to Tasks</Text></SoftPressable></SafeAreaView></LinearGradient>;
+
   return (
-    <LinearGradient
-      colors={["#1A103C", "#0D0722", "#050212"]}
-      style={styles.container}
-    >
+    <LinearGradient colors={["#26104B", "#100621", "#07030F"]} style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={["top", "left", "right", "bottom"]}>
-        {/* HEADER */}
-        <View style={styles.header}>
-          <SoftPressable onPress={() => router.back()} style={styles.backBtn}>
-            <Ionicons name="chevron-back" size={20} color="#FFFFFF" />
-          </SoftPressable>
-          <Text style={styles.title}>{task.id}</Text>
-          <View style={styles.backBtnPlaceholder} />
-        </View>
+        <View style={styles.header}><SoftPressable onPress={() => router.back()} style={styles.roundButton}><Ionicons name="chevron-back" size={20} color="#FFFFFF" /></SoftPressable><View style={styles.headerCopy}><Text style={styles.kicker}>{task.type.toUpperCase()} TASK</Text><Text style={styles.headerTitle}>#{task.orderId}</Text></View><View style={[styles.statusPill, task.status === "completed" && styles.completedPill]}><Text style={styles.statusText}>{task.status.toUpperCase()}</Text></View></View>
 
-        {/* MAP ROUTE */}
-        <View style={styles.mapFrame}>
-          <MapView
-            style={styles.map}
-            initialRegion={{
-              latitude: (driverStart.latitude + task.latitude) / 2,
-              longitude: (driverStart.longitude + task.longitude) / 2,
-              latitudeDelta: Math.abs(driverStart.latitude - task.latitude) * 2,
-              longitudeDelta: Math.abs(driverStart.longitude - task.longitude) * 2,
-            }}
-          >
-            {/* Driver Location */}
-            {status !== "completed" && (
-              <Marker coordinate={driverStart} title="Your Location">
-                <View style={styles.driverMarker}>
-                  <Ionicons name="bicycle" size={14} color="#FFF" />
-                </View>
-              </Marker>
-            )}
+        <View style={styles.mapFrame}><MapView ref={mapRef} provider={PROVIDER_GOOGLE} style={styles.map} initialRegion={{ latitude: (driverPoint.latitude + customerPoint.latitude) / 2, longitude: (driverPoint.longitude + customerPoint.longitude) / 2, latitudeDelta: 0.055, longitudeDelta: 0.055 }} onMapReady={() => fitMap(mapRef.current)}>{hasDriverLocation ? <Marker coordinate={driverPoint} title={sharing ? "Your live location" : "Last driver location"}><View style={[styles.driverMarker, !sharing && styles.pausedMarker]}><Ionicons name="car-sport" size={14} color="#FFFFFF" /></View></Marker> : null}<Marker coordinate={customerPoint} title={task.customerName}><View style={[styles.customerMarker, task.type === "delivery" && styles.deliveryMarker]}><Ionicons name="location" size={14} color="#FFFFFF" /></View></Marker>{mapRoute.length > 1 ? <Polyline coordinates={mapRoute} strokeColor="#7C2BC2" strokeWidth={5} lineCap="round" lineJoin="round" /> : null}</MapView><View style={styles.mapOverlay}><Ionicons name={mapRoute.length > 1 ? "navigate" : liveTracking.loading ? "sync" : "information-circle-outline"} size={14} color="#D6B4FF" /><Text style={styles.mapOverlayText}>{mapRoute.length > 1 ? `${liveTracking.route?.distanceMeters ? `${(liveTracking.route.distanceMeters / 1000).toFixed(1)} km · ` : ""}${liveTracking.route?.durationSeconds ? `${Math.max(1, Math.round(liveTracking.route.durationSeconds / 60))} min` : "Best road route"}` : liveTracking.loading ? "Calculating best road route…" : liveTracking.error || "Start the live journey to calculate a road route"}</Text></View><SoftPressable onPress={() => setFullScreenMap(true)} style={styles.expandMap}><Ionicons name="expand-outline" size={19} color="#FFFFFF" /></SoftPressable></View>
 
-            {/* Customer Location */}
-            <Marker coordinate={{ latitude: task.latitude, longitude: task.longitude }} title="Customer Location">
-              <View style={[styles.customerMarker, task.type === "delivery" && styles.customerMarkerDelivery]}>
-                <Ionicons name="location" size={14} color="#FFF" />
-              </View>
-            </Marker>
-
-            {/* Route Line */}
-            {status !== "completed" && (
-              <Polyline
-                coordinates={[driverStart, { latitude: task.latitude, longitude: task.longitude }]}
-                strokeColor={LaundryTheme.colors.primary}
-                strokeWidth={3}
-              />
-            )}
-          </MapView>
-        </View>
-
-        {/* BOTTOM SHEET DETAIL */}
-        <View style={styles.detailsSheet}>
-          <View style={styles.statusRow}>
-            <View style={[styles.typeBadge, task.type === "delivery" && styles.typeBadgeDelivery]}>
-              <Text style={styles.typeText}>{task.type.toUpperCase()}</Text>
-            </View>
-            <View style={styles.statusBadge}>
-              <Text style={styles.statusBadgeText}>{status.toUpperCase()}</Text>
-            </View>
-          </View>
-
-          <Text style={styles.customerName}>{task.customerName}</Text>
-          <Text style={styles.addressText}>{task.address}</Text>
-
-          <View style={styles.timeRow}>
-            <Ionicons name="time" size={16} color="#A79BCE" />
-            <Text style={styles.timeText}>{task.timeSlot}</Text>
-          </View>
-
-          <View style={styles.divider} />
-
-          {/* CONTACT BUTTONS */}
-          {status !== "completed" && (
-            <View style={styles.contactRow}>
-              <SoftPressable onPress={() => handleContact("call")} style={styles.contactBtn}>
-                <Ionicons name="call" size={18} color="#FFFFFF" />
-                <Text style={styles.contactBtnText}>Call Customer</Text>
-              </SoftPressable>
-              <SoftPressable onPress={() => handleContact("sms")} style={styles.contactBtn}>
-                <Ionicons name="chatbox-ellipses" size={18} color="#FFFFFF" />
-                <Text style={styles.contactBtnText}>Text Message</Text>
-              </SoftPressable>
-            </View>
-          )}
-
-          {/* MAIN ACTION CTA */}
-          <SoftPressable
-            onPress={status === "completed" ? () => router.back() : handleAction}
-            style={[styles.actionCta, status === "completed" && styles.actionCtaCompleted]}
-          >
-            <Text style={styles.actionCtaText}>
-              {status === "completed" ? "Back to Tasks" : getActionLabel()}
-            </Text>
-          </SoftPressable>
-        </View>
+        <View style={styles.sheet}><ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.sheetContent}>
+          <View style={styles.handle} /><View style={styles.customerRow}><View style={styles.customerAvatar}><Text style={styles.customerInitial}>{task.customerName.charAt(0).toUpperCase()}</Text></View><View style={styles.customerCopy}><Text style={styles.customerName}>{task.customerName}</Text><Text style={styles.customerPhone}>{task.phoneNumber || "Secure customer contact"}</Text></View>{task.status !== "completed" ? <View style={styles.contactRow}><SoftPressable disabled={Boolean(contacting)} onPress={() => void contact("call")} style={styles.contactButton}>{contacting === "call" ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Ionicons name="call" size={17} color="#FFFFFF" />}</SoftPressable><SoftPressable disabled={Boolean(contacting)} onPress={() => void contact("sms")} style={styles.contactButton}>{contacting === "sms" ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Ionicons name="chatbubble" size={16} color="#FFFFFF" />}</SoftPressable></View> : null}</View>
+          <View style={styles.addressCard}><Ionicons name="location-outline" size={21} color="#B887F0" /><View style={styles.addressCopy}><Text style={styles.fieldLabel}>SERVICE ADDRESS</Text><Text style={styles.address}>{task.address}</Text></View></View>
+          {task.status !== "available" && task.status !== "completed" ? <SoftPressable onPress={() => sharing ? void stopDriverLocationSharing(task.id).then(() => { setSharing(false); setBackgroundEnabled(false); }) : setShowLocationDisclosure(true)} style={[styles.sharingCard, sharing && styles.sharingCardActive]}><View style={styles.sharingIcon}><Ionicons name={sharing ? "radio" : "location-outline"} size={18} color={sharing ? "#53D5A5" : "#D6B4FF"} /></View><View style={styles.sharingCopy}><Text style={styles.sharingTitle}>{sharing ? "Live location is on" : "Start live journey"}</Text><Text style={styles.sharingBody}>{sharing ? (publisher.error || `Customer can follow this journey${backgroundEnabled ? " even when the app is in the background" : " while this screen remains active"}.`) : "Required so the customer can see your arrival progress."}</Text></View><Ionicons name={sharing ? "pause-circle-outline" : "chevron-forward"} size={21} color="#D6B4FF" /></SoftPressable> : null}
+          <View style={styles.detailGrid}><View style={styles.detailCard}><Ionicons name="time-outline" size={19} color="#B887F0" /><Text style={styles.fieldLabel}>TIME WINDOW</Text><Text style={styles.detailValue}>{task.timeSlot}</Text></View><View style={styles.detailCard}><Ionicons name={task.isExpress ? "flash" : "calendar-outline"} size={19} color={task.isExpress ? "#F2AC3C" : "#B887F0"} /><Text style={styles.fieldLabel}>SERVICE</Text><Text style={styles.detailValue}>{task.isExpress ? "24h Express" : "72h Standard"}</Text></View></View>
+          {task.paymentStatus === "unpaid" ? <View style={styles.paymentDueCard}><View style={styles.paymentDueIcon}><Ionicons name="cash-outline" size={19} color="#F2AC3C" /></View><View style={styles.paymentDueCopy}><Text style={styles.paymentDueTitle}>PAY ON DELIVERY</Text><Text style={styles.paymentDueBody}>{formatNaira(task.paidAmount)} must be recorded before delivery is completed.</Text></View>{task.assignedToMe ? <SoftPressable onPress={confirmPaymentCollected} disabled={working} style={styles.paymentDueButton}><Text style={styles.paymentDueButtonText}>Mark paid</Text></SoftPressable> : null}</View> : null}
+          <View style={styles.itemsCard}><View style={styles.itemsHeader}><Text style={styles.itemsTitle}>Garments</Text><Text style={styles.amount} adjustsFontSizeToFit minimumFontScale={0.7} numberOfLines={1}>{formatNaira(task.paidAmount)}</Text></View>{task.lineItems.length ? task.lineItems.map((item) => <View key={`${item.id}-${item.name}`} style={styles.itemRow}><Text style={styles.quantity}>{item.quantity}×</Text><Text style={styles.itemName}>{item.name}</Text></View>) : <Text style={styles.noItems}>No garment details were attached.</Text>}</View>
+          <SoftPressable onPress={action ? () => void handleAction() : () => router.back()} style={[styles.actionButton, !action && styles.doneButton, working && styles.disabled]}>{working ? <ActivityIndicator color="#FFFFFF" /> : <><Text style={styles.actionText}>{action?.label ?? "Back to Tasks"}</Text><Ionicons name={action ? "arrow-forward" : "checkmark"} size={19} color="#FFFFFF" /></>}</SoftPressable>
+        </ScrollView></View>
+        <ConfirmationDialog visible={showLocationDisclosure} title="Share location for this journey?" message="Dr Laundry will share your precise location with this order’s customer while the pickup or delivery is active. Android may keep a visible notification on screen. Sharing stops when you complete the task." confirmLabel="Start journey" busy={startingLocation} onCancel={() => setShowLocationDisclosure(false)} onConfirm={() => void beginLocationSharing()} />
+        <Modal visible={fullScreenMap} animationType="slide" onRequestClose={() => setFullScreenMap(false)}><View style={styles.fullMap}><MapView ref={fullMapRef} provider={PROVIDER_GOOGLE} style={StyleSheet.absoluteFill} initialRegion={{ ...customerPoint, latitudeDelta: 0.04, longitudeDelta: 0.04 }} onMapReady={() => fitMap(fullMapRef.current)}>{hasDriverLocation ? <Marker coordinate={driverPoint} title="Driver"><View style={[styles.driverMarker, !sharing && styles.pausedMarker]}><Ionicons name="car-sport" size={14} color="#FFFFFF" /></View></Marker> : null}<Marker coordinate={customerPoint} title={task.customerName}><View style={[styles.customerMarker, task.type === "delivery" && styles.deliveryMarker]}><Ionicons name="location" size={14} color="#FFFFFF" /></View></Marker>{mapRoute.length > 1 ? <Polyline coordinates={mapRoute} strokeColor="#7C2BC2" strokeWidth={6} lineCap="round" lineJoin="round" /> : null}</MapView><SafeAreaView pointerEvents="box-none" style={styles.fullMapControls}><SoftPressable onPress={() => setFullScreenMap(false)} style={styles.closeMap}><Ionicons name="close" size={23} color="#FFFFFF" /></SoftPressable><View style={styles.fullMapStatus}><Ionicons name="navigate" size={16} color="#D6B4FF" /><Text style={styles.fullMapStatusText}>{mapRoute.length > 1 ? "Best road route to customer" : liveTracking.loading ? "Calculating road route…" : "Road route unavailable"}</Text></View></SafeAreaView></View></Modal>
+        <AppToast toast={toast} topInset={12} onDismiss={dismissToast} />
       </SafeAreaView>
     </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  safeArea: { flex: 1 },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-  },
-  backBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.08)",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.05)",
-  },
-  backBtnPlaceholder: {
-    width: 38,
-  },
-  title: {
-    color: "#FFFFFF",
-    fontSize: 18,
-    fontWeight: "900",
-  },
-  mapFrame: {
-    flex: 1,
-    marginHorizontal: 16,
-    borderRadius: 24,
-    overflow: "hidden",
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
-  },
-  map: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  driverMarker: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: LaundryTheme.colors.primary,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "#FFFFFF",
-  },
-  customerMarker: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: LaundryTheme.colors.primaryDark,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "#FFFFFF",
-  },
-  customerMarkerDelivery: {
-    backgroundColor: LaundryTheme.colors.success,
-  },
-  detailsSheet: {
-    backgroundColor: "#161030",
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    padding: 20,
-    marginTop: 16,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.05)",
-  },
-  statusRow: {
-    flexDirection: "row",
-    gap: 8,
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  typeBadge: {
-    backgroundColor: "#7C3AED",
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  typeBadgeDelivery: {
-    backgroundColor: "#10B981",
-  },
-  typeText: {
-    color: "#FFFFFF",
-    fontWeight: "900",
-    fontSize: 9,
-    letterSpacing: 0.6,
-  },
-  statusBadge: {
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  statusBadgeText: {
-    color: "#BCA3FF",
-    fontWeight: "800",
-    fontSize: 9,
-  },
-  customerName: {
-    color: "#FFFFFF",
-    fontSize: 22,
-    fontWeight: "900",
-  },
-  addressText: {
-    color: "#D2C5FF",
-    fontSize: 14,
-    lineHeight: 20,
-    marginTop: 6,
-  },
-  timeRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginTop: 10,
-  },
-  timeText: {
-    color: "#A79BCE",
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  divider: {
-    height: 1,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    marginVertical: 16,
-  },
-  contactRow: {
-    flexDirection: "row",
-    gap: 10,
-    marginBottom: 16,
-  },
-  contactBtn: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderRadius: 14,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.05)",
-  },
-  contactBtnText: {
-    color: "#FFFFFF",
-    fontWeight: "800",
-    fontSize: 12,
-  },
-  actionCta: {
-    backgroundColor: LaundryTheme.colors.primary,
-    borderRadius: 16,
-    paddingVertical: 16,
-    alignItems: "center",
-    shadowColor: LaundryTheme.colors.primary,
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 4,
-  },
-  actionCtaCompleted: {
-    backgroundColor: LaundryTheme.colors.success,
-    shadowColor: LaundryTheme.colors.success,
-  },
-  actionCtaText: {
-    color: "#FFFFFF",
-    fontWeight: "900",
-    fontSize: 15,
-  },
+  container: { flex: 1 }, safeArea: { flex: 1 }, center: { flex: 1, justifyContent: "center", alignItems: "center", padding: 28 }, stateTitle: { color: "#FFFFFF", fontSize: 21, fontWeight: "900", marginTop: 12 }, stateText: { color: "#B19DC4", textAlign: "center", lineHeight: 20, marginTop: 7 }, backToTasks: { marginTop: 20, backgroundColor: "#7C2BC2", borderRadius: 15, paddingHorizontal: 18, paddingVertical: 12 }, backToTasksText: { color: "#FFFFFF", fontWeight: "900" },
+  header: { height: 65, paddingHorizontal: 18, flexDirection: "row", alignItems: "center" }, roundButton: { width: 41, height: 41, borderRadius: 14, backgroundColor: "rgba(255,255,255,0.09)", alignItems: "center", justifyContent: "center" }, headerCopy: { flex: 1, marginLeft: 12 }, kicker: { color: "#B887F0", fontSize: 9, fontWeight: "900", letterSpacing: 1 }, headerTitle: { color: "#FFFFFF", fontSize: 17, fontWeight: "900", marginTop: 1 }, statusPill: { borderRadius: 99, paddingHorizontal: 9, paddingVertical: 6, backgroundColor: "rgba(184,135,240,0.14)" }, completedPill: { backgroundColor: "rgba(32,193,132,0.14)" }, statusText: { color: "#D3B3F4", fontSize: 8, fontWeight: "900" },
+  mapFrame: { flex: 0.73, marginHorizontal: 15, borderRadius: 24, overflow: "hidden", borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" }, map: { ...StyleSheet.absoluteFillObject }, mapOverlay: { position: "absolute", left: 12, right: 58, top: 12, flexDirection: "row", gap: 6, alignItems: "center", borderRadius: 12, paddingHorizontal: 10, paddingVertical: 8, backgroundColor: "rgba(20,8,40,0.86)" }, mapOverlayText: { flex: 1, color: "#E3D6F0", fontSize: 10, fontWeight: "700" }, expandMap: { position: "absolute", right: 12, top: 12, width: 39, height: 39, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(20,8,40,0.88)" }, driverMarker: { width: 30, height: 30, borderRadius: 15, backgroundColor: "#7C2BC2", alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: "#FFFFFF" }, customerMarker: { width: 30, height: 30, borderRadius: 15, backgroundColor: "#B05AE9", alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: "#FFFFFF" }, deliveryMarker: { backgroundColor: "#149A6E" }, fullMap: { flex: 1, backgroundColor: "#100621" }, fullMapControls: { flex: 1, padding: 18, justifyContent: "space-between", alignItems: "flex-start" }, closeMap: { width: 48, height: 48, borderRadius: 17, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(20,8,40,0.9)" }, fullMapStatus: { alignSelf: "stretch", marginBottom: 8, minHeight: 52, borderRadius: 17, paddingHorizontal: 15, flexDirection: "row", alignItems: "center", gap: 9, backgroundColor: "rgba(20,8,40,0.92)" }, fullMapStatusText: { color: "#FFFFFF", fontSize: 12, fontWeight: "800" },
+  pausedMarker: { backgroundColor: "#6E6478" }, sharingCard: { marginTop: 9, minHeight: 70, borderRadius: 17, padding: 12, flexDirection: "row", alignItems: "center", backgroundColor: "rgba(184,135,240,0.09)", borderWidth: 1, borderColor: "rgba(184,135,240,0.18)" }, sharingCardActive: { backgroundColor: "rgba(32,193,132,0.08)", borderColor: "rgba(83,213,165,0.22)" }, sharingIcon: { width: 36, height: 36, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.07)" }, sharingCopy: { flex: 1, marginHorizontal: 10 }, sharingTitle: { color: "#FFFFFF", fontSize: 12, fontWeight: "900" }, sharingBody: { color: "#9D8AAD", fontSize: 9, lineHeight: 13, marginTop: 3 },
+  sheet: { flex: 1.27, backgroundColor: "#17102B", borderTopLeftRadius: 30, borderTopRightRadius: 30, marginTop: -17, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)", overflow: "hidden" }, sheetContent: { padding: 19, paddingTop: 10, paddingBottom: 24 }, handle: { alignSelf: "center", width: 42, height: 4, borderRadius: 3, backgroundColor: "#4B3B60", marginBottom: 16 }, customerRow: { flexDirection: "row", alignItems: "center" }, customerAvatar: { width: 49, height: 49, borderRadius: 17, backgroundColor: "#7C2BC2", alignItems: "center", justifyContent: "center" }, customerInitial: { color: "#FFFFFF", fontSize: 18, fontWeight: "900" }, customerCopy: { flex: 1, marginLeft: 11 }, customerName: { color: "#FFFFFF", fontSize: 18, fontWeight: "900" }, customerPhone: { color: "#9D8AAD", fontSize: 11, marginTop: 3 }, contactRow: { flexDirection: "row", gap: 7 }, contactButton: { width: 39, height: 39, borderRadius: 14, backgroundColor: "rgba(255,255,255,0.09)", alignItems: "center", justifyContent: "center" },
+  addressCard: { marginTop: 15, borderRadius: 17, padding: 13, flexDirection: "row", backgroundColor: "rgba(255,255,255,0.055)" }, addressCopy: { flex: 1, marginLeft: 10 }, fieldLabel: { color: "#8C779F", fontSize: 8, fontWeight: "900", letterSpacing: 0.8 }, address: { color: "#E9E0F0", fontSize: 12, lineHeight: 17, marginTop: 3 }, detailGrid: { flexDirection: "row", gap: 9, marginTop: 9 }, detailCard: { flex: 1, minHeight: 84, borderRadius: 16, padding: 12, backgroundColor: "rgba(255,255,255,0.055)" }, detailValue: { color: "#FFFFFF", fontSize: 11, fontWeight: "700", lineHeight: 15, marginTop: 5 }, paymentDueCard: { marginTop: 9, borderRadius: 16, padding: 12, flexDirection: "row", alignItems: "center", gap: 9, backgroundColor: "rgba(242,172,60,0.12)", borderWidth: 1, borderColor: "rgba(242,172,60,0.25)" }, paymentDueIcon: { width: 35, height: 35, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(242,172,60,0.12)" }, paymentDueCopy: { flex: 1 }, paymentDueTitle: { color: "#F2AC3C", fontSize: 8, fontWeight: "900", letterSpacing: 0.8 }, paymentDueBody: { color: "#D7C4AA", fontSize: 10, lineHeight: 14, marginTop: 2 }, paymentDueButton: { borderRadius: 11, paddingHorizontal: 10, paddingVertical: 9, backgroundColor: "#F2AC3C" }, paymentDueButtonText: { color: "#2A1900", fontSize: 9, fontWeight: "900" }, itemsCard: { marginTop: 9, borderRadius: 16, padding: 13, backgroundColor: "rgba(255,255,255,0.055)" }, itemsHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }, itemsTitle: { color: "#FFFFFF", fontSize: 13, fontWeight: "900" }, amount: { width: 145, textAlign: "right", color: "#D4B1F4", fontSize: 13, lineHeight: 18, fontWeight: "900" }, itemRow: { flexDirection: "row", marginTop: 4 }, quantity: { color: "#B887F0", fontSize: 11, fontWeight: "900", width: 28 }, itemName: { color: "#C8B9D3", fontSize: 11 }, noItems: { color: "#9B88AB", fontSize: 11 }, actionButton: { marginTop: 14, minHeight: 53, borderRadius: 17, backgroundColor: "#7C2BC2", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, shadowColor: LaundryTheme.colors.primary, shadowOpacity: 0.28, shadowRadius: 12, shadowOffset: { width: 0, height: 7 }, elevation: 5 }, doneButton: { backgroundColor: "#149A6E" }, disabled: { opacity: 0.65 }, actionText: { color: "#FFFFFF", fontSize: 14, fontWeight: "900", textTransform: "uppercase" },
 });

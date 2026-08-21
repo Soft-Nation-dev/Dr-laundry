@@ -34,12 +34,12 @@ export default function MembershipScreen() {
         <View style={styles.hero}>
           <Ionicons name="flash" size={36} color="#fff" />
           <Text style={styles.heroTitle}>Priority pickup</Text>
-          <Text style={styles.heroSub}>Immediate pickup • 48h return</Text>
+          <Text style={styles.heroSub}>Immediate pickup • 24h return</Text>
         </View>
 
         <View style={styles.featureCard}>
           <Feature icon="time-outline" text="Immediate pickup scheduling" />
-          <Feature icon="rocket-outline" text="Returned within 48 hours" />
+          <Feature icon="rocket-outline" text="Returned within 24 hours" />
           <Feature icon="star-outline" text="Priority handling" />
         </View>
 

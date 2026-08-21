@@ -1,6 +1,7 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "dr-laundry-backend",
+  "account_id": "d8f8ba0cf7da5e452ac8730b7dfcf231",
   "main": "src/index.ts",
   "compatibility_date": "2026-08-07",
   "compatibility_flags": ["nodejs_compat"],

@@ -4,11 +4,24 @@ export type PickupDayCode = "today" | "tomorrow" | "next-day";
 
 export type PickupWindowCode = "morning" | "afternoon" | "asap";
 
+export type TurnaroundHours = 24 | 72;
+export type PaymentMethod = "paystack" | "pay_on_delivery";
+export type PaymentStatus = "pending" | "unpaid" | "paid" | "failed" | "expired";
+
 export type OrderStatus =
   | "pickup-confirmed"
   | "processing"
   | "out-for-delivery"
-  | "delivered";
+  | "delivered"
+  | "cancelled";
+
+export type DriverTaskType = "pickup" | "delivery";
+
+export type DriverTaskStatus =
+  | "available"
+  | "accepted"
+  | "arrived"
+  | "completed";
 
 export type CatalogItemCategory = "regular" | "extras";
 
@@ -40,12 +53,17 @@ export type PricingTotals = {
 
 export type OrderDraft = {
   address: string;
+  addressPlaceId?: string;
+  latitude?: number;
+  longitude?: number;
   note: string;
   mode: LaundryMode;
   pickupDay: PickupDayCode;
   pickupWindow: PickupWindowCode;
   deliveryDay?: PickupDayCode;
   deliveryWindow?: PickupWindowCode;
+  isExpress?: boolean;
+  turnaroundHours: TurnaroundHours;
   lineItems: OrderLineItem[];
   totals: PricingTotals;
 };
@@ -60,5 +78,13 @@ export type OrderRecord = OrderDraft & {
   isExpress: boolean;
   status: OrderStatus;
   paidAmount: number;
+  paymentMethod?: PaymentMethod;
+  paymentStatus?: PaymentStatus;
+  paymentMarkedBy?: string;
+  paymentMarkedByRole?: string;
+  paymentMarkedAt?: string;
+  driverId?: string;
+  driverTaskType?: DriverTaskType;
+  driverTaskStatus?: DriverTaskStatus;
 };
 

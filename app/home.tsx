@@ -1,4 +1,5 @@
 import { SoftPressable } from "@/components/soft-pressable";
+import { AppHeader } from "@/components/app-header";
 import { LaundryTheme } from "@/constants/laundry-theme";
 import { getHomeDashboard, HomeDashboard } from "@/lib/home-api";
 import { formatDateTime, formatNaira, getOrderStatusLabel } from "@/lib/pricing";
@@ -8,7 +9,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
@@ -21,23 +22,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-type HomeAction = {
-  label: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  route: string;
-};
-
-const homeActions: HomeAction[] = [
-  { label: "Pickup", icon: "calendar-outline", route: "/pickup-dates" },
-  { label: "History", icon: "receipt-outline", route: "/order-history" },
-  { label: "Track", icon: "navigate-outline", route: "/track-order" },
-  { label: "Price List", icon: "shirt-outline", route: "/new-order" },
-  { label: "Pay", icon: "card-outline", route: "/payment" },
-  { label: "Express", icon: "flash-outline", route: "/membership" },
-  { label: "Support", icon: "chatbubbles-outline", route: "/support" },
-  { label: "Profile", icon: "person-outline", route: "/profile" },
-];
-
 const EMPTY_DASHBOARD: HomeDashboard = {
   profileName: "",
   nextOrder: null,
@@ -45,18 +29,16 @@ const EMPTY_DASHBOARD: HomeDashboard = {
   inProcess: 0,
   delivered: 0,
   pendingAmount: 0,
+  pendingPaymentCount: 0,
+  pendingPaymentExpiresAt: null,
   unreadNotifications: 0,
 };
 
-function getFirstName(value: unknown) {
-  if (typeof value !== "string") return "there";
-  const names = value.trim().replace(/\s+/g, " ").split(" ").filter(Boolean);
-  const selected = names[0];
-  if (!selected) return "there";
-  return (
-    selected.charAt(0).toLocaleUpperCase() +
-    selected.slice(1).toLocaleLowerCase()
-  );
+function formatCountdown(totalSeconds: number) {
+  const safe = Math.max(0, totalSeconds);
+  const minutes = Math.floor(safe / 60);
+  const seconds = safe % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
 function entranceStyle(value: Animated.Value, offset = 14) {
@@ -78,16 +60,14 @@ export default function HomeScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [loadError, setLoadError] = useState("");
+  const [pendingSeconds, setPendingSeconds] = useState(0);
+  const handledExpiryRef = useRef<string | null>(null);
+
   const headerIn = useRef(new Animated.Value(0)).current;
   const statusIn = useRef(new Animated.Value(0)).current;
   const servicesIn = useRef(new Animated.Value(0)).current;
   const overviewIn = useRef(new Animated.Value(0)).current;
   const livePulse = useRef(new Animated.Value(1)).current;
-
-  const userName = useMemo(
-    () => getFirstName(dashboard.profileName),
-    [dashboard.profileName],
-  );
 
   const runEntrance = useCallback(() => {
     [headerIn, statusIn, servicesIn, overviewIn].forEach((value) =>
@@ -135,13 +115,13 @@ export default function HomeScreen() {
     const animation = Animated.loop(
       Animated.sequence([
         Animated.timing(livePulse, {
-          toValue: 0.5,
-          duration: 950,
+          toValue: 0.4,
+          duration: 900,
           useNativeDriver: true,
         }),
         Animated.timing(livePulse, {
           toValue: 1,
-          duration: 950,
+          duration: 900,
           useNativeDriver: true,
         }),
       ]),
@@ -189,7 +169,7 @@ export default function HomeScreen() {
       channel = nextChannel;
       nextChannel.subscribe();
     }).catch(() => {
-      // Focus refresh and pull-to-refresh remain available if realtime fails.
+      // Realtime fallback
     });
 
     return () => {
@@ -197,6 +177,26 @@ export default function HomeScreen() {
       if (channel) supabase.removeChannel(channel);
     };
   }, [loadDashboard]);
+
+  useEffect(() => {
+    const expiry = dashboard.pendingPaymentExpiresAt;
+    if (!expiry) {
+      setPendingSeconds(0);
+      handledExpiryRef.current = null;
+      return;
+    }
+    const tick = () => {
+      const seconds = Math.max(0, Math.ceil((new Date(expiry).getTime() - Date.now()) / 1000));
+      setPendingSeconds(seconds);
+      if (seconds === 0 && handledExpiryRef.current !== expiry) {
+        handledExpiryRef.current = expiry;
+        void loadDashboard();
+      }
+    };
+    tick();
+    const timer = setInterval(tick, 1000);
+    return () => clearInterval(timer);
+  }, [dashboard.pendingPaymentExpiresAt, loadDashboard]);
 
   const openStatus = () => {
     if (dashboard.nextOrder) {
@@ -209,36 +209,25 @@ export default function HomeScreen() {
     }
   };
 
-  const openAction = (item: HomeAction) => {
-    if (item.label === "Track" && dashboard.latestActiveOrderId) {
-      router.push({
-        pathname: "/track-order",
-        params: { orderId: dashboard.latestActiveOrderId },
-      });
-      return;
-    }
-    router.push(item.route as never);
-  };
-
-  const statusLabel = dashboard.nextOrder
-    ? dashboard.nextOrder.status === "pickup-confirmed"
-      ? "Next pickup"
-      : "Active order"
-    : "Laundry, on your time";
   const statusTitle = dashboard.nextOrder
     ? dashboard.nextOrder.status === "pickup-confirmed"
       ? formatDateTime(dashboard.nextOrder.pickupAtISO)
       : getOrderStatusLabel(dashboard.nextOrder.status)
-    : "Schedule a pickup";
+    : "No pickup scheduled";
+
   const statusChip = dashboard.nextOrder
     ? dashboard.nextOrder.status === "pickup-confirmed"
       ? "Pickup confirmed"
       : getOrderStatusLabel(dashboard.nextOrder.status)
-    : "Get started";
+    : "Book a service";
+
+  const pendingAmountDisplay = dashboard.pendingAmount > 0
+    ? formatNaira(dashboard.pendingAmount)
+    : formatNaira(0);
 
   return (
     <LinearGradient
-      colors={[LaundryTheme.colors.bgStart, "#FFFFFF", LaundryTheme.colors.bgEnd]}
+      colors={["#F4EEFC", "#ECE5F8", "#E8DFFA"]}
       style={styles.container}
     >
       <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
@@ -254,45 +243,9 @@ export default function HomeScreen() {
             />
           }
         >
-          <Animated.View style={[styles.headerRow, entranceStyle(headerIn, 10)]}>
-            <View style={styles.brandBlock}>
-              <Image
-                source={require("@/assets/images/logo.jpeg")}
-                style={styles.logo}
-                contentFit="cover"
-              />
-              <View>
-                <Text style={styles.kicker}>Dr Laundry</Text>
-                <Text style={styles.title}>Hi {userName}</Text>
-              </View>
-            </View>
-            <View style={styles.headerPills}>
-              <SoftPressable
-                onPress={() => router.push("/notifications" as never)}
-                style={styles.iconPill}
-                accessibilityLabel="Open notifications"
-              >
-                <Ionicons
-                  name="notifications-outline"
-                  size={18}
-                  color={LaundryTheme.colors.ink}
-                />
-                {dashboard.unreadNotifications > 0 ? (
-                  <View style={styles.notificationBadge}>
-                    <Text style={styles.notificationBadgeText}>
-                      {Math.min(dashboard.unreadNotifications, 9)}
-                    </Text>
-                  </View>
-                ) : null}
-              </SoftPressable>
-              <SoftPressable
-                onPress={() => router.push("/settings" as never)}
-                style={styles.avatar}
-                accessibilityLabel="Open settings"
-              >
-                <Ionicons name="settings-outline" size={19} color="#FFFFFF" />
-              </SoftPressable>
-            </View>
+          {/* Shared Header Component */}
+          <Animated.View style={entranceStyle(headerIn, 10)}>
+            <AppHeader unreadCount={dashboard.unreadNotifications} inSafeArea={false} />
           </Animated.View>
 
           {loadError ? (
@@ -306,87 +259,204 @@ export default function HomeScreen() {
             </SoftPressable>
           ) : null}
 
+          {/* NEXT PICKUP Hero Banner */}
           <Animated.View style={entranceStyle(statusIn)}>
-            <SoftPressable onPress={openStatus} style={styles.statusCard}>
-              <View style={styles.statusOrbLarge} />
-              <View style={styles.statusOrbSmall} />
-              <View style={styles.statusTopRow}>
-                <Text style={styles.statusLabel}>{statusLabel}</Text>
-                {dashboard.nextOrder ? (
+            <SoftPressable onPress={openStatus} style={styles.heroCard}>
+              <LinearGradient
+                colors={["#3D0B6B", "#4A1184", "#5C16A3"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.heroGradient}
+              >
+                {/* Decorative background circles */}
+                <View style={styles.decorCircleLarge} />
+                <View style={styles.decorCircleSmall} />
+
+                {/* Top Row: Label & LIVE Badge */}
+                <View style={styles.heroTopRow}>
+                  <Text style={styles.heroLabel}>NEXT PICKUP</Text>
                   <View style={styles.liveWrap}>
                     <Animated.View style={[styles.liveDot, { opacity: livePulse }]} />
                     <Text style={styles.liveText}>LIVE</Text>
                   </View>
-                ) : null}
-              </View>
-              <View style={styles.statusMainRow}>
-                <View style={styles.statusCopy}>
+                </View>
+
+                {/* Middle: Date/Time */}
+                <View style={styles.heroMiddleRow}>
                   {isLoading ? (
-                    <ActivityIndicator
-                      style={styles.statusLoader}
-                      color="#FFFFFF"
-                    />
+                    <ActivityIndicator color="#FFFFFF" style={{ alignSelf: "flex-start", marginVertical: 6 }} />
                   ) : (
-                    <Text style={styles.statusTime}>{statusTitle}</Text>
+                    <Text style={styles.heroDateText}>{statusTitle}</Text>
                   )}
-                  <View style={styles.statusChip}>
-                    <Text style={styles.statusChipText}>{statusChip}</Text>
+                </View>
+
+                {/* Bottom Row: Status Chip & Arrow Button */}
+                <View style={styles.heroBottomRow}>
+                  <View style={styles.statusPill}>
+                    <Text style={styles.statusPillText}>{statusChip}</Text>
+                  </View>
+
+                  <View style={styles.heroArrowBtn}>
+                    <Ionicons name="chevron-forward" size={20} color={LaundryTheme.colors.primaryDark} />
                   </View>
                 </View>
-                <View style={styles.statusArrow}>
-                  <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
-                </View>
-              </View>
+              </LinearGradient>
             </SoftPressable>
           </Animated.View>
 
+          {/* Services Section */}
           <Animated.View style={entranceStyle(servicesIn)}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Services</Text>
               <Text style={styles.sectionHint}>Everything in one place</Text>
             </View>
-            <View style={styles.grid}>
-              {homeActions.map((item) => (
-                <SoftPressable
-                  key={item.label}
-                  onPress={() => openAction(item)}
-                  style={styles.actionTile}
-                >
-                  <View style={styles.actionIconWrap}>
-                    <Ionicons
-                      name={item.icon}
-                      size={23}
-                      color={LaundryTheme.colors.primaryDark}
-                    />
-                  </View>
-                  <Text style={styles.actionLabel}>{item.label}</Text>
-                </SoftPressable>
-              ))}
+
+            {/* Row 1: Top 3 Main Service Cards matching step 1 */}
+            <View style={styles.serviceRowMain}>
+              <SoftPressable
+                onPress={() => router.push({ pathname: "/new-order", params: { mode: "wash-iron" } })}
+                style={styles.serviceCardMain}
+              >
+                <View style={styles.illustrationWrap}>
+                  <Image
+                    source={require("@/assets/images/wash_and_fold.png")}
+                    style={styles.serviceImage}
+                    contentFit="contain"
+                  />
+                </View>
+                <Text style={styles.serviceTitleMain}>Washing +{"\n"}Ironing</Text>
+              </SoftPressable>
+
+              <SoftPressable
+                onPress={() => router.push({ pathname: "/new-order", params: { mode: "ironing-only" } })}
+                style={styles.serviceCardMain}
+              >
+                <View style={styles.illustrationWrap}>
+                  <Image
+                    source={require("@/assets/images/ironing.png")}
+                    style={styles.serviceImage}
+                    contentFit="contain"
+                  />
+                </View>
+                <Text style={styles.serviceTitleMain}>Ironing{"\n"}Only</Text>
+              </SoftPressable>
+
+              <SoftPressable
+                onPress={() => router.push({ pathname: "/new-order", params: { mode: "washing-only" } })}
+                style={styles.serviceCardMain}
+              >
+                <View style={styles.illustrationWrap}>
+                  <Image
+                    source={require("@/assets/images/dry_clean.png")}
+                    style={styles.serviceImage}
+                    contentFit="contain"
+                  />
+                </View>
+                <Text style={styles.serviceTitleMain}>Washing{"\n"}Only</Text>
+              </SoftPressable>
+
+              <SoftPressable
+                onPress={() => router.push({ pathname: "/new-order", params: { mode: "wash-iron", express: "true" } })}
+                style={[styles.serviceCardMain, styles.serviceCardExpress]}
+              >
+                <View style={[styles.illustrationWrap, styles.illustrationWrapExpress]}>
+                  <Image
+                    source={require("@/assets/images/express_service.png")}
+                    style={styles.serviceImage}
+                    contentFit="contain"
+                  />
+                </View>
+                <Text style={[styles.serviceTitleMain, styles.serviceTitleExpress]}>Express{"\n"}24h</Text>
+              </SoftPressable>
+            </View>
+
+            {/* Row 2: Bottom 4 Secondary Feature Tiles */}
+            <View style={styles.serviceRowSecondary}>
+              <SoftPressable
+                onPress={() => router.push("/payment-history" as never)}
+                style={styles.serviceTileSecondary}
+              >
+                <Ionicons name="wallet-outline" size={24} color={LaundryTheme.colors.primaryDark} />
+                <Text style={styles.serviceTitleSecondary}>Payments</Text>
+              </SoftPressable>
+
+              <SoftPressable
+                onPress={() => router.push("/support" as never)}
+                style={styles.serviceTileSecondary}
+              >
+                <Ionicons name="pricetag-outline" size={22} color={LaundryTheme.colors.primaryDark} />
+                <Text style={styles.serviceTitleSecondary}>Support</Text>
+              </SoftPressable>
+
+              <SoftPressable
+                onPress={() => router.push("/support" as never)}
+                style={styles.serviceTileSecondary}
+              >
+                <Ionicons name="chatbubble-ellipses-outline" size={22} color={LaundryTheme.colors.primaryDark} />
+                <Text style={styles.serviceTitleSecondary}>Chater</Text>
+              </SoftPressable>
+
+              <SoftPressable
+                onPress={() => router.push("/profile" as never)}
+                style={styles.serviceTileSecondary}
+              >
+                <Ionicons name="headset-outline" size={22} color={LaundryTheme.colors.primaryDark} />
+                <Text style={styles.serviceTitleSecondary}>Profile</Text>
+              </SoftPressable>
             </View>
           </Animated.View>
 
+          {/* Overview Section */}
           <Animated.View style={entranceStyle(overviewIn)}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Overview</Text>
               <Text style={styles.sectionHint}>Your laundry at a glance</Text>
             </View>
-            <View style={styles.quickRow}>
-              <View style={styles.quickCard}>
-                <Ionicons name="cube-outline" size={20} color={LaundryTheme.colors.primaryDark} />
-                <Text style={styles.quickValue}>{isLoading ? "—" : dashboard.inProcess}</Text>
-                <Text style={styles.quickLabel}>In Process</Text>
-              </View>
-              <View style={styles.quickCard}>
-                <Ionicons name="checkmark-circle-outline" size={20} color={LaundryTheme.colors.success} />
-                <Text style={styles.quickValue}>{isLoading ? "—" : dashboard.delivered}</Text>
-                <Text style={styles.quickLabel}>Delivered</Text>
-              </View>
-              <View style={styles.quickCard}>
-                <Ionicons name="wallet-outline" size={20} color={LaundryTheme.colors.warning} />
-                <Text style={[styles.quickValue, styles.quickValueSmall]}>
-                  {isLoading ? "—" : formatNaira(dashboard.pendingAmount)}
+
+            <View style={styles.overviewGrid}>
+              {/* Left Card: In Process */}
+              <View style={styles.inProcessCard}>
+                <Ionicons name="cube-outline" size={26} color={LaundryTheme.colors.primaryDark} />
+                <Text style={styles.inProcessNumber}>
+                  {isLoading ? "—" : dashboard.inProcess}
                 </Text>
-                <Text style={styles.quickLabel}>Pending</Text>
+                <Text style={styles.inProcessLabel}>In Process</Text>
+              </View>
+
+              {/* Right Card: Pending Payments & PAY NOW */}
+              <View style={styles.pendingCard}>
+                <View style={styles.pendingTopRow}>
+                  <SoftPressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Open payment history"
+                    onPress={() => router.push("/payment-history" as never)}
+                    style={styles.pendingReceiptButton}
+                  >
+                    <Ionicons name="receipt-outline" size={23} color={LaundryTheme.colors.primaryDark} />
+                  </SoftPressable>
+                  <View style={{ alignItems: "flex-end" }}>
+                    <Text style={styles.pendingAmountText}>
+                      {isLoading ? "—" : pendingAmountDisplay}
+                    </Text>
+                    <Text style={styles.pendingLabel}>Pending Payments</Text>
+                  </View>
+                </View>
+
+                <Text style={styles.pendingTimerText}>
+                  {dashboard.pendingPaymentCount > 0
+                    ? `Auto-cancels in ${formatCountdown(pendingSeconds)}`
+                    : "No payment awaiting checkout"}
+                </Text>
+
+                {/* PAY NOW CTA Button */}
+                <SoftPressable
+                  onPress={() => router.push("/payment-history" as never)}
+                  style={styles.payNowBtn}
+                >
+                  <Text style={styles.payNowText}>
+                    {dashboard.pendingPaymentCount > 0 ? "PAY NOW" : "VIEW HISTORY"}
+                  </Text>
+                </SoftPressable>
               </View>
             </View>
           </Animated.View>
@@ -400,48 +470,356 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   safeArea: { flex: 1 },
   content: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingTop: 10,
-    paddingBottom: LaundryTheme.layout.bottomMenuSpace + 28,
+    paddingBottom: LaundryTheme.layout.bottomMenuSpace + 40,
   },
-  headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12 },
-  brandBlock: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1 },
-  logo: { width: 43, height: 43, borderRadius: 14 },
-  kicker: { fontSize: 12, color: LaundryTheme.colors.primaryDark, fontWeight: "800", letterSpacing: 0.3 },
-  title: { marginTop: 2, fontSize: 21, fontWeight: "800", color: LaundryTheme.colors.ink, letterSpacing: -0.4 },
-  headerPills: { flexDirection: "row", alignItems: "center", gap: 9 },
-  iconPill: { width: 40, height: 40, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: LaundryTheme.colors.border, ...LaundryTheme.shadow.soft },
-  notificationBadge: { position: "absolute", right: -4, top: -4, minWidth: 17, height: 17, borderRadius: 9, paddingHorizontal: 4, alignItems: "center", justifyContent: "center", backgroundColor: LaundryTheme.colors.danger, borderWidth: 2, borderColor: "#FFFFFF" },
-  notificationBadgeText: { color: "#FFFFFF", fontSize: 8, fontWeight: "900" },
-  avatar: { width: 40, height: 40, borderRadius: 14, backgroundColor: LaundryTheme.colors.primary, justifyContent: "center", alignItems: "center", ...LaundryTheme.shadow.soft },
-  errorStrip: { marginTop: 14, minHeight: 48, borderRadius: 15, paddingHorizontal: 13, flexDirection: "row", alignItems: "center", gap: 9, backgroundColor: "#FFF3F5", borderWidth: 1, borderColor: "#FFD9E1" },
-  errorText: { flex: 1, color: "#7D3448", fontSize: 11, lineHeight: 15 },
-  retryText: { color: "#9B3651", fontSize: 11, fontWeight: "900" },
-  statusCard: { marginTop: 18, borderRadius: 24, padding: 18, minHeight: 154, backgroundColor: LaundryTheme.colors.primary, overflow: "hidden", ...LaundryTheme.shadow.strong },
-  statusOrbLarge: { position: "absolute", width: 150, height: 150, borderRadius: 75, right: -48, top: -70, backgroundColor: "rgba(255,255,255,0.08)" },
-  statusOrbSmall: { position: "absolute", width: 76, height: 76, borderRadius: 38, right: 54, bottom: -52, backgroundColor: "rgba(255,255,255,0.06)" },
-  statusTopRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  statusLabel: { color: "#E8DBFF", fontSize: 11, fontWeight: "800", letterSpacing: 1, textTransform: "uppercase" },
-  liveWrap: { flexDirection: "row", alignItems: "center", gap: 5, borderRadius: 999, backgroundColor: "rgba(255,255,255,0.14)", paddingHorizontal: 8, paddingVertical: 5 },
-  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#67F5C4" },
-  liveText: { color: "#FFFFFF", fontSize: 8, fontWeight: "900", letterSpacing: 0.8 },
-  statusMainRow: { flex: 1, marginTop: 8, flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", gap: 12 },
-  statusCopy: { flex: 1 },
-  statusTime: { color: "#FFFFFF", fontSize: 20, lineHeight: 25, fontWeight: "800" },
-  statusLoader: { alignSelf: "flex-start", marginVertical: 8 },
-  statusChip: { marginTop: 12, alignSelf: "flex-start", backgroundColor: "rgba(255,255,255,0.16)", borderRadius: 999, paddingHorizontal: 11, paddingVertical: 7 },
-  statusChipText: { color: "#FFFFFF", fontSize: 11, fontWeight: "700" },
-  statusArrow: { width: 38, height: 38, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.16)" },
-  sectionHeader: { marginTop: 22, flexDirection: "row", alignItems: "baseline", justifyContent: "space-between" },
-  sectionTitle: { color: LaundryTheme.colors.ink, fontSize: 15, fontWeight: "800" },
-  sectionHint: { color: LaundryTheme.colors.muted, fontSize: 10 },
-  grid: { marginTop: 11, flexDirection: "row", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between" },
-  actionTile: { width: "23%", alignItems: "center", paddingVertical: 7, paddingHorizontal: 2, marginBottom: 11, minHeight: 88 },
-  actionIconWrap: { width: 54, height: 54, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: LaundryTheme.colors.border, ...LaundryTheme.shadow.soft },
-  actionLabel: { marginTop: 7, fontSize: 10.5, color: LaundryTheme.colors.ink, fontWeight: "700", textAlign: "center", lineHeight: 14 },
-  quickRow: { marginTop: 11, flexDirection: "row", justifyContent: "space-between", gap: 8 },
-  quickCard: { flex: 1, minHeight: 108, backgroundColor: "#FFFFFF", borderRadius: 18, paddingHorizontal: 11, paddingVertical: 14, borderWidth: 1, borderColor: LaundryTheme.colors.border, ...LaundryTheme.shadow.soft },
-  quickValue: { marginTop: 8, fontWeight: "800", color: LaundryTheme.colors.ink, fontSize: 16 },
-  quickValueSmall: { fontSize: 12 },
-  quickLabel: { marginTop: 3, color: LaundryTheme.colors.muted, fontSize: 10 },
+
+  // Header
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  brandBlock: { flexDirection: "row", alignItems: "center", gap: 12, flex: 1 },
+  avatarBorder: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    borderWidth: 2,
+    borderColor: "#3D0B6B",
+    padding: 2,
+    backgroundColor: "#FFFFFF",
+  },
+  logo: { width: "100%", height: "100%", borderRadius: 20 },
+  kicker: { fontSize: 13, color: LaundryTheme.colors.muted, fontWeight: "600" },
+  title: { marginTop: 1, fontSize: 22, fontWeight: "900", color: LaundryTheme.colors.ink, letterSpacing: -0.4 },
+  headerPills: { flexDirection: "row", alignItems: "center", gap: 10 },
+  bellPill: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFFFFF",
+    ...LaundryTheme.shadow.soft,
+  },
+  notificationBadge: {
+    position: "absolute",
+    right: 2,
+    top: 2,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    paddingHorizontal: 4,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: LaundryTheme.colors.danger,
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
+  },
+  notificationBadgeText: { color: "#FFFFFF", fontSize: 9, fontWeight: "900" },
+  settingsPill: {
+    width: 44,
+    height: 44,
+    borderRadius: 16,
+    backgroundColor: LaundryTheme.colors.primaryDark,
+    justifyContent: "center",
+    alignItems: "center",
+    ...LaundryTheme.shadow.soft,
+  },
+
+  // Error Strip
+  errorStrip: {
+    marginBottom: 14,
+    minHeight: 44,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#FFF3F5",
+    borderWidth: 1,
+    borderColor: "#FFD9E1",
+  },
+  errorText: { flex: 1, color: "#7D3448", fontSize: 12 },
+  retryText: { color: "#9B3651", fontSize: 12, fontWeight: "900" },
+
+  // Hero Banner Card
+  heroCard: {
+    marginBottom: 20,
+    borderRadius: 26,
+    overflow: "hidden",
+    ...LaundryTheme.shadow.strong,
+  },
+  heroGradient: {
+    padding: 22,
+    minHeight: 160,
+    justifyContent: "space-between",
+  },
+  decorCircleLarge: {
+    position: "absolute",
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    right: -40,
+    top: -60,
+    backgroundColor: "rgba(255, 255, 255, 0.07)",
+  },
+  decorCircleSmall: {
+    position: "absolute",
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    right: 30,
+    bottom: -40,
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
+  },
+  heroTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  heroLabel: {
+    color: "rgba(255, 255, 255, 0.75)",
+    fontSize: 12,
+    fontWeight: "800",
+    letterSpacing: 1.2,
+  },
+  liveWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    borderRadius: 999,
+    backgroundColor: "rgba(255, 255, 255, 0.18)",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  liveDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: "#4ADE80",
+  },
+  liveText: {
+    color: "#FFFFFF",
+    fontSize: 9,
+    fontWeight: "900",
+    letterSpacing: 0.8,
+  },
+  heroMiddleRow: {
+    marginVertical: 10,
+  },
+  heroDateText: {
+    color: "#FFFFFF",
+    fontSize: 23,
+    fontWeight: "900",
+    letterSpacing: -0.4,
+  },
+  heroBottomRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  statusPill: {
+    backgroundColor: "rgba(255, 255, 255, 0.18)",
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+  },
+  statusPillText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  heroArrowBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    ...LaundryTheme.shadow.soft,
+  },
+
+  // Section Headers
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    color: LaundryTheme.colors.ink,
+    fontSize: 18,
+    fontWeight: "900",
+  },
+  sectionHint: {
+    color: LaundryTheme.colors.muted,
+    fontSize: 12,
+    fontWeight: "600",
+  },
+
+  // Services Grid
+  serviceRowMain: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  serviceCardMain: {
+    width: "23.5%",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 18,
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 110,
+    borderWidth: 1,
+    borderColor: "rgba(230, 220, 250, 0.6)",
+    ...LaundryTheme.shadow.soft,
+  },
+  illustrationWrap: {
+    width: 52,
+    height: 52,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 6,
+  },
+  serviceImage: {
+    width: 48,
+    height: 48,
+  },
+  serviceTitleMain: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: LaundryTheme.colors.ink,
+    textAlign: "center",
+    lineHeight: 14,
+  },
+  serviceCardExpress: {
+    borderColor: "rgba(76, 16, 125, 0.3)",
+    borderWidth: 1.5,
+    backgroundColor: "rgba(244, 238, 252, 0.9)",
+  },
+  illustrationWrapExpress: {
+    backgroundColor: "rgba(76, 16, 125, 0.08)",
+  },
+  serviceTitleExpress: {
+    color: LaundryTheme.colors.primaryDark,
+  },
+
+  serviceRowSecondary: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 24,
+  },
+  serviceTileSecondary: {
+    width: "23.5%",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 18,
+    paddingVertical: 14,
+    paddingHorizontal: 4,
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 90,
+    borderWidth: 1.5,
+    borderColor: "rgba(230, 220, 250, 0.8)",
+    ...LaundryTheme.shadow.soft,
+  },
+  serviceTitleSecondary: {
+    marginTop: 6,
+    fontSize: 11.5,
+    fontWeight: "700",
+    color: LaundryTheme.colors.ink,
+    textAlign: "center",
+  },
+
+  // Overview Section Grid
+  overviewGrid: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 16,
+  },
+  inProcessCard: {
+    width: "36%",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 22,
+    padding: 16,
+    justifyContent: "space-between",
+    minHeight: 130,
+    borderWidth: 1,
+    borderColor: "rgba(230, 220, 250, 0.6)",
+    ...LaundryTheme.shadow.soft,
+  },
+  inProcessNumber: {
+    fontSize: 26,
+    fontWeight: "900",
+    color: LaundryTheme.colors.ink,
+    marginVertical: 4,
+  },
+  inProcessLabel: {
+    fontSize: 12,
+    color: LaundryTheme.colors.muted,
+    fontWeight: "700",
+  },
+
+  pendingCard: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 22,
+    padding: 16,
+    justifyContent: "space-between",
+    minHeight: 130,
+    borderWidth: 1,
+    borderColor: "rgba(230, 220, 250, 0.6)",
+    ...LaundryTheme.shadow.soft,
+  },
+  pendingTopRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
+  pendingReceiptButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: LaundryTheme.colors.primarySoft,
+  },
+  pendingAmountText: {
+    fontSize: 22,
+    fontWeight: "900",
+    color: LaundryTheme.colors.ink,
+    letterSpacing: -0.5,
+  },
+  pendingLabel: {
+    fontSize: 11,
+    color: LaundryTheme.colors.muted,
+    fontWeight: "600",
+    marginTop: 2,
+  },
+  pendingTimerText: {
+    marginTop: 7,
+    color: LaundryTheme.colors.primaryDark,
+    fontSize: 11,
+    fontWeight: "800",
+  },
+  payNowBtn: {
+    backgroundColor: LaundryTheme.colors.primary,
+    borderRadius: 14,
+    paddingVertical: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 12,
+    ...LaundryTheme.shadow.soft,
+  },
+  payNowText: {
+    color: "#FFFFFF",
+    fontWeight: "900",
+    fontSize: 13,
+    letterSpacing: 0.5,
+  },
 });

@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20,
     paddingTop: 12,
-    paddingBottom: LaundryTheme.layout.bottomMenuSpace + 8,
+    paddingBottom: 24,
   },
   headerRow: {
     flexDirection: "row",

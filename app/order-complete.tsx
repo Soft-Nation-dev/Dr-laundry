@@ -128,7 +128,7 @@ export default function OrderCompleteScreen() {
         <SafeAreaView style={styles.centered}>
           <Ionicons name="alert-circle-outline" size={40} color={LaundryTheme.colors.muted} />
           <Text style={styles.emptyTitle}>No order found</Text>
-          <Text style={styles.emptyBody}>We couldn't locate this order.</Text>
+          <Text style={styles.emptyBody}>We could not locate this order.</Text>
           <SoftPressable onPress={() => router.replace("/home")} style={styles.homeBtn}>
             <Text style={styles.homeBtnText}>Go to Home</Text>
           </SoftPressable>
@@ -171,7 +171,7 @@ export default function OrderCompleteScreen() {
               </Text>
               <Text style={styles.heroSubtitle}>
                 {order.isExpress
-                  ? "Your clothes will be back in 48 hours, priority handled."
+                  ? "Your clothes will be back within 24 hours, priority handled."
                   : "Sit back — your clothes will be freshly returned in 72 hours."}
               </Text>
             </Animated.View>

@@ -7,7 +7,10 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import "react-native-reanimated";
 
+import "@/lib/driver-location-task";
+
 import { RootBottomMenu } from "@/components/root-bottom-menu";
+import { NotificationBootstrap } from "@/components/notification-bootstrap";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 
 export default function RootLayout() {
@@ -32,12 +35,20 @@ export default function RootLayout() {
         <Stack.Screen name="settings" />
         <Stack.Screen name="new-order" />
         <Stack.Screen name="payment" />
+        <Stack.Screen name="payment-history" />
         <Stack.Screen name="pickup-map" />
         <Stack.Screen name="track-order" />
         <Stack.Screen name="order-complete" />
+        <Stack.Screen name="admin/index" />
+        <Stack.Screen name="admin/orders" />
+        <Stack.Screen name="admin/users" />
+        <Stack.Screen name="driver/home" />
+        <Stack.Screen name="driver/task-detail" />
+        <Stack.Screen name="driver/completed" />
         <Stack.Screen name="modal" options={{ presentation: "modal" }} />
       </Stack>
       <RootBottomMenu />
+      <NotificationBootstrap />
       <StatusBar style="auto" />
     </ThemeProvider>
   );

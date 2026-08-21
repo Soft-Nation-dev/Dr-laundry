@@ -1,3 +1,4 @@
+import { LiveOrderMap } from "@/components/live-order-map";
 import { LaundryTheme } from "@/constants/laundry-theme";
 import { getOrderById } from "@/lib/order-storage";
 import { formatDateTime, getOrderStatusLabel, hoursUntil } from "@/lib/pricing";
@@ -166,6 +167,9 @@ export default function TrackOrderScreen() {
             </View>
           ) : order ? (
             <>
+              <Animated.View style={{ opacity: introOpacity, transform: [{ translateY: introOffset }] }}>
+                <LiveOrderMap orderId={order.id} height={330} />
+              </Animated.View>
               <Animated.View
                 style={[
                   styles.statusBanner,

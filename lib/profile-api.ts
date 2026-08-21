@@ -35,6 +35,7 @@ export async function getProfile(): Promise<ApiResponse<Profile>> {
             "",
           address: (user.user_metadata?.address as string) ?? "",
           avatarUrl: (user.user_metadata?.avatar_url as string) ?? "",
+          role: "customer",
         },
       };
     }
@@ -48,6 +49,9 @@ export async function getProfile(): Promise<ApiResponse<Profile>> {
         phoneNumber: profile.phone_number ?? "",
         address: profile.address ?? "",
         avatarUrl: profile.avatar_url ?? "",
+        role: ["driver", "admin", "superadmin"].includes(profile.role)
+          ? profile.role
+          : "customer",
       },
     };
   } catch (err: any) {

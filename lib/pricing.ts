@@ -14,7 +14,15 @@ import {
     PickupDayCode,
     PickupWindowCode,
     PricingTotals,
+    TurnaroundHours,
 } from "@/types/order";
+
+export const STANDARD_TURNAROUND_HOURS: TurnaroundHours = 72;
+export const EXPRESS_TURNAROUND_HOURS: TurnaroundHours = 24;
+
+export function getTurnaroundHours(isExpress: boolean): TurnaroundHours {
+  return isExpress ? EXPRESS_TURNAROUND_HOURS : STANDARD_TURNAROUND_HOURS;
+}
 
 export function roundToNearest(value: number, step = ROUNDING_STEP): number {
   if (!Number.isFinite(value)) {
@@ -56,6 +64,8 @@ export function getOrderStatusLabel(status: OrderStatus): string {
       return "Out for delivery";
     case "delivered":
       return "Delivered";
+    case "cancelled":
+      return "Cancelled";
     default:
       return "Pending";
   }
@@ -134,11 +144,13 @@ export function resolvePickupAtISO(
 }
 
 export function resolvePromisedDeliveryISO(
-  pickupAtISO: string,
+  orderPlacedAtISO: string,
   isExpress: boolean,
 ): string {
-  const promised = new Date(pickupAtISO);
-  promised.setHours(promised.getHours() + (isExpress ? 48 : 72));
+  const promised = new Date(orderPlacedAtISO);
+  promised.setTime(
+    promised.getTime() + getTurnaroundHours(isExpress) * 60 * 60 * 1000,
+  );
   return promised.toISOString();
 }
 
@@ -189,36 +201,6 @@ export function hoursUntil(isoDate: string): number {
   }
   const deltaMs = target - Date.now();
   return Math.max(0, Math.ceil(deltaMs / (1000 * 60 * 60)));
-}
-
-export function resolveDeliveryAtISO(
-  deliveryDay: PickupDayCode,
-  deliveryWindow: PickupWindowCode,
-  isExpress: boolean,
-): string {
-  if (isExpress || deliveryWindow === "asap") {
-    const date = new Date();
-    date.setHours(date.getHours() + 48);
-    return date.toISOString();
-  }
-
-  const dayConfig = PICKUP_DAY_OPTIONS.find(
-    (option) => option.code === deliveryDay,
-  );
-  const windowConfig = PICKUP_WINDOW_OPTIONS.find(
-    (option) => option.code === deliveryWindow,
-  );
-
-  const deliveryAt = new Date();
-  deliveryAt.setSeconds(0, 0);
-
-  const dayOffset = dayConfig?.offsetDays ?? 1;
-  deliveryAt.setDate(deliveryAt.getDate() + dayOffset);
-
-  const hour = windowConfig?.startHour ?? 15;
-  deliveryAt.setHours(hour, 0, 0, 0);
-
-  return deliveryAt.toISOString();
 }
 
 export function getDeliveryWindowLabel(windowCode: PickupWindowCode): string {

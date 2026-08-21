@@ -1,27 +1,31 @@
 import { SoftPressable } from "@/components/soft-pressable";
+import { ORDER_TRANSITION_COVER_MS, OrderTransitionOverlay } from "@/components/order-transition-overlay";
+import { getGarmentImage } from "@/constants/garment-images";
 import { LaundryTheme } from "@/constants/laundry-theme";
 import { MODE_OPTIONS } from "@/constants/pricing";
 import { apiRequest } from "@/lib/api-client";
 import { clearDraft, getDraft } from "@/lib/order-draft";
-import { createOrderFromDraft } from "@/lib/order-storage";
 import {
+  formatDateTime,
   formatNaira,
+  getTurnaroundHours,
   getPickupDayLabel,
   getPickupWindowLabel,
-  getDeliveryDayLabel,
-  getDeliveryWindowLabel,
+  resolvePromisedDeliveryISO,
 } from "@/lib/pricing";
 import { OrderDraft } from "@/types/order";
 import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Animated,
   AppState,
   AppStateStatus,
+  BackHandler,
   Modal,
   ScrollView,
   StyleSheet,
@@ -42,7 +46,12 @@ function parseDraftParam(rawParam?: string | string[]): OrderDraft | null {
     const decoded = decodeURIComponent(raw);
     const parsed = JSON.parse(decoded) as OrderDraft;
     if (!parsed || !Array.isArray(parsed.lineItems) || !parsed.totals) return null;
-    return parsed;
+    const isExpress = Boolean(parsed.isExpress);
+    return {
+      ...parsed,
+      isExpress,
+      turnaroundHours: getTurnaroundHours(isExpress),
+    };
   } catch {
     return null;
   }
@@ -68,22 +77,37 @@ function isPaystackTerminalUrl(url: string): boolean {
 
 export default function PaymentScreen() {
   const { draft } = useLocalSearchParams<{ draft?: string }>();
+  const routeDraft = useMemo(() => parseDraftParam(draft), [draft]);
 
-  const [orderDraft, setOrderDraft] = useState<OrderDraft | null>(() =>
-    parseDraftParam(draft),
+  const [orderDraft, setOrderDraft] = useState<OrderDraft | null>(routeDraft);
+  const [isExpress, setIsExpress] = useState(() =>
+    Boolean(routeDraft?.isExpress),
   );
 
   useEffect(() => {
     (async () => {
-      const parsed = parseDraftParam(draft);
-      if (parsed) { setOrderDraft(parsed); return; }
+      if (routeDraft) {
+        setOrderDraft(routeDraft);
+        setIsExpress(Boolean(routeDraft.isExpress));
+        return;
+      }
       const stored = await getDraft();
-      if (stored) setOrderDraft(stored as OrderDraft);
+      if (stored) {
+        const isExpress = Boolean(stored.isExpress);
+        setOrderDraft({
+          ...stored,
+          isExpress,
+          turnaroundHours: getTurnaroundHours(isExpress),
+        });
+        setIsExpress(isExpress);
+      }
     })();
-  }, [draft]);
+  }, [routeDraft]);
 
   const [showExpressModal, setShowExpressModal] = useState(false);
-  const [isExpress, setIsExpress] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<"paystack" | "pay_on_delivery">("paystack");
+  const [payOnDeliveryEligible, setPayOnDeliveryEligible] = useState(false);
+  const [isLoadingPaymentOptions, setIsLoadingPaymentOptions] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [webViewError, setWebViewError] = useState<string | null>(null);
 
@@ -91,11 +115,15 @@ export default function PaymentScreen() {
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
   const [activeReference, setActiveReference] = useState<string | null>(null);
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
+  const [isLeavingCheckout, setIsLeavingCheckout] = useState(false);
+  const leavingRef = useRef(false);
+  const leaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Track whether we've already handled the terminal URL to prevent double-fires
   const paymentHandledRef = useRef(false);
   // Track if the WebView was open when the app went to background (AppState)
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
+  const manualVerifyRef = useRef<() => void>(() => undefined);
 
   // Entry animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -105,7 +133,7 @@ export default function PaymentScreen() {
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
+      Animated.timing(fadeAnim, { toValue: 1, duration: 220, useNativeDriver: true }),
       Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, speed: 14, bounciness: 4 }),
       Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, speed: 12, bounciness: 5 }),
     ]).start();
@@ -117,6 +145,35 @@ export default function PaymentScreen() {
       Animated.spring(modalSlide, { toValue: 0, useNativeDriver: true, speed: 14, bounciness: 3 }).start();
     }
   }, [showExpressModal, modalSlide]);
+
+  useEffect(() => {
+    if (!showExpressModal) return;
+    let active = true;
+    setIsLoadingPaymentOptions(true);
+    apiRequest<{ payOnDeliveryEligible: boolean }>("/api/orders/payment-options", { auth: true })
+      .then((response) => {
+        if (!active) return;
+        const eligible = Boolean(response.success && response.data?.payOnDeliveryEligible);
+        setPayOnDeliveryEligible(eligible);
+        if (!eligible) setPaymentMethod("paystack");
+      })
+      .finally(() => {
+        if (active) setIsLoadingPaymentOptions(false);
+      });
+    return () => { active = false; };
+  }, [showExpressModal]);
+
+  const dismissCheckoutSheet = useCallback(() => new Promise<void>((resolve) => {
+    Animated.timing(modalSlide, {
+      toValue: 420,
+      duration: 190,
+      easing: (value) => value * value,
+      useNativeDriver: true,
+    }).start(() => {
+      setShowExpressModal(false);
+      requestAnimationFrame(() => resolve());
+    });
+  }), [modalSlide]);
 
   // ── AppState Recovery Handler ──────────────────
   // If the user backgrounds the app mid-payment and comes back, check if the
@@ -149,7 +206,7 @@ export default function PaymentScreen() {
             },
             {
               text: "Check Status",
-              onPress: () => handleVerifyManually(),
+              onPress: () => manualVerifyRef.current(),
             },
           ],
         );
@@ -157,7 +214,7 @@ export default function PaymentScreen() {
     });
 
     return () => subscription.remove();
-  }, [paymentUrl, activeReference]);
+  }, [paymentUrl]);
 
   // ── Manual verification (after AppState recovery) ─
   const handleVerifyManually = async () => {
@@ -194,11 +251,24 @@ export default function PaymentScreen() {
       setIsProcessingPayment(false);
     }
   };
+  manualVerifyRef.current = () => {
+    void handleVerifyManually();
+  };
 
   const totalPieces = useMemo(() => {
     if (!orderDraft) return 0;
     return orderDraft.lineItems.reduce((sum, item) => sum + item.quantity, 0);
   }, [orderDraft]);
+
+  const previewItems = useMemo(
+    () => orderDraft?.lineItems.slice(0, 3) ?? [],
+    [orderDraft],
+  );
+
+  const turnaroundHours = getTurnaroundHours(isExpress);
+  const promisedDeliveryLabel = formatDateTime(
+    resolvePromisedDeliveryISO(new Date().toISOString(), isExpress),
+  );
 
   const payableAmount = orderDraft
     ? isExpress ? orderDraft.totals.expressTotal : orderDraft.totals.standardTotal
@@ -217,27 +287,44 @@ export default function PaymentScreen() {
   const handleConfirmPayment = async () => {
     if (!orderDraft) return;
 
-    setIsProcessingPayment(true);
     paymentHandledRef.current = false;
+    await dismissCheckoutSheet();
+    setIsProcessingPayment(true);
 
     try {
       const response = await apiRequest<{
-        authorization_url: string;
-        reference: string;
+        authorization_url: string | null;
+        reference: string | null;
         orderId: string;
+        payment_method: "paystack" | "pay_on_delivery";
+        payment_status: "pending" | "unpaid";
       }>("/api/orders/create", {
         method: "POST",
         auth: true,
-        body: { draft: orderDraft, isExpress },
+        body: {
+          draft: {
+            ...orderDraft,
+            isExpress,
+            turnaroundHours,
+          },
+          isExpress,
+          turnaroundHours,
+          paymentMethod,
+        },
       });
 
-      if (response.success && response.data?.authorization_url) {
+      if (response.success && response.data?.payment_method === "pay_on_delivery") {
+        await clearDraft();
+        router.replace({ pathname: "/pickup-map", params: { orderId: response.data.orderId } });
+        return;
+      }
+
+      if (response.success && response.data?.authorization_url && response.data.reference) {
         const { authorization_url, reference, orderId } = response.data;
         setActiveReference(reference);
         setActiveOrderId(orderId);
         setWebViewError(null);
         setPaymentUrl(authorization_url);
-        setShowExpressModal(false);
         return;
       }
 
@@ -247,7 +334,7 @@ export default function PaymentScreen() {
         response.message || "We couldn't initialize your payment session. Please try again.",
         [{ text: "OK" }],
       );
-    } catch (err: any) {
+    } catch {
       // Network error or server error — do NOT create a fake order
       Alert.alert(
         "Connection Error",
@@ -260,7 +347,7 @@ export default function PaymentScreen() {
   };
 
   // ── WebView: user taps close / hardware back ───
-  const handleCancelWebViewPayment = () => {
+  const handleCancelWebViewPayment = useCallback(() => {
     Alert.alert(
       "Cancel Checkout",
       "Are you sure you want to cancel? Your payment will NOT be processed and no money will be charged.",
@@ -278,7 +365,36 @@ export default function PaymentScreen() {
         },
       ],
     );
-  };
+  }, []);
+
+  const handleBackNavigation = useCallback(() => {
+    if (leavingRef.current) return;
+    leavingRef.current = true;
+    setIsLeavingCheckout(true);
+
+    // Paint the feedback first so navigation feels responsive even while the
+    // previous garment review tree is being restored.
+    leaveTimerRef.current = setTimeout(() => {
+      if (router.canGoBack()) router.back();
+      else router.replace("/new-order");
+    }, ORDER_TRANSITION_COVER_MS);
+  }, []);
+
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener(
+      "hardwareBackPress",
+      () => {
+        if (paymentUrl) handleCancelWebViewPayment();
+        else handleBackNavigation();
+        return true;
+      },
+    );
+
+    return () => {
+      subscription.remove();
+      if (leaveTimerRef.current) clearTimeout(leaveTimerRef.current);
+    };
+  }, [handleBackNavigation, handleCancelWebViewPayment, paymentUrl]);
 
   // ── WebView: navigation state change ──────────
   const handleWebViewNavigationStateChange = async (navState: any) => {
@@ -326,7 +442,7 @@ export default function PaymentScreen() {
         params: { orderId: activeOrderId || activeReference },
       });
 
-    } catch (err: any) {
+    } catch {
       // Network failure during verification. We do NOT assume payment succeeded.
       paymentHandledRef.current = false;
       Alert.alert(
@@ -365,7 +481,7 @@ export default function PaymentScreen() {
           {/* Header */}
           <Animated.View style={[styles.headerBlock, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
             <View style={styles.headerRow}>
-              <SoftPressable onPress={() => router.back()} style={styles.backBtn}>
+              <SoftPressable onPress={handleBackNavigation} style={styles.backBtn}>
                 <Ionicons name="chevron-back" size={22} color={LaundryTheme.colors.ink} />
               </SoftPressable>
               <Text style={styles.title}>Payment</Text>
@@ -381,20 +497,60 @@ export default function PaymentScreen() {
               {/* Total Amount Hero */}
               <Animated.View style={[styles.totalHero, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
                 <LinearGradient
-                  colors={[LaundryTheme.colors.primary, LaundryTheme.colors.primaryDark]}
+                  colors={["#451075", "#6E22CB", "#8B5CF6"]}
                   style={styles.totalGradient}
                 >
-                  <Text style={styles.totalLabel}>Total to Pay</Text>
-                  <Text style={styles.totalAmount}>{formatNaira(payableAmount)}</Text>
-                  <Text style={styles.totalMeta}>
-                    {totalPieces} pieces • {isExpress ? "Express 48hr" : "Standard 72hr"}
-                  </Text>
+                  <View style={styles.heroOrbLarge} />
+                  <View style={styles.heroOrbSmall} />
+                  <View style={styles.heroContent}>
+                    <View style={styles.heroCopy}>
+                      <View style={styles.heroBadge}>
+                        <Ionicons name="lock-closed" size={11} color="#F8D66D" />
+                        <Text style={styles.heroBadgeText}>SECURE CHECKOUT</Text>
+                      </View>
+                      <Text style={styles.totalLabel}>Total to pay</Text>
+                      <Text
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                        minimumFontScale={0.7}
+                        style={styles.totalAmount}
+                      >
+                        {formatNaira(payableAmount)}
+                      </Text>
+                      <Text style={styles.totalMeta}>
+                        {totalPieces} pieces • {isExpress ? "Express 24h" : "Standard 72h"}
+                      </Text>
+                    </View>
+
+                    <View style={styles.heroPreviewStack}>
+                      {previewItems.map((item, index) => {
+                        const source = getGarmentImage(item.id);
+                        return (
+                          <View
+                            key={item.id}
+                            style={[styles.heroPreviewCard, { marginLeft: index === 0 ? 0 : -13 }]}
+                          >
+                            {source ? (
+                              <Image
+                                source={source}
+                                style={styles.heroPreviewImage}
+                                contentFit="contain"
+                                cachePolicy="memory-disk"
+                              />
+                            ) : (
+                              <Ionicons name="shirt-outline" size={22} color={LaundryTheme.colors.primaryDark} />
+                            )}
+                          </View>
+                        );
+                      })}
+                    </View>
+                  </View>
                 </LinearGradient>
               </Animated.View>
 
               {/* Order Recap Card */}
               <Animated.View style={[styles.card, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-                <Text style={styles.cardTitle}>Order Details</Text>
+                <CardHeader icon="bag-check-outline" title="Order details" />
                 <RecapRow label="Service" value={MODE_OPTIONS[orderDraft.mode].label} />
                 <RecapRow label="Items" value={`${totalPieces} pieces`} />
                 <RecapRow
@@ -403,39 +559,46 @@ export default function PaymentScreen() {
                 />
                 <RecapRow
                   label="Delivery"
-                  value={
-                    orderDraft.deliveryDay && orderDraft.deliveryWindow
-                      ? `${getDeliveryDayLabel(orderDraft.deliveryDay)} • ${getDeliveryWindowLabel(orderDraft.deliveryWindow)}`
-                      : "Standard schedule"
-                  }
+                  value={`${promisedDeliveryLabel} • within ${turnaroundHours}h`}
                 />
                 <RecapRow label="Address" value={orderDraft.address} />
               </Animated.View>
 
               {/* Price Breakdown Card */}
               <Animated.View style={[styles.card, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-                <Text style={styles.cardTitle}>Price Breakdown</Text>
-                <PriceRow label="Base subtotal" value={formatNaira(orderDraft.totals.baseSubtotal)} />
-                <PriceRow label={`${MODE_OPTIONS[orderDraft.mode].label} subtotal`} value={formatNaira(orderDraft.totals.modeSubtotal)} />
-                <PriceRow label="Pickup & Delivery" value={formatNaira(orderDraft.totals.pickupDeliveryFee)} />
+                <CardHeader icon="receipt-outline" title="Price breakdown" />
+                <PriceRow label="Base subtotal" amount={orderDraft.totals.baseSubtotal} />
+                <PriceRow label={`${MODE_OPTIONS[orderDraft.mode].label} subtotal`} amount={orderDraft.totals.modeSubtotal} />
+                <PriceRow label="Pickup & delivery" amount={orderDraft.totals.pickupDeliveryFee} />
                 <View style={styles.divider} />
-                <PriceRow label="Standard Total" value={formatNaira(orderDraft.totals.standardTotal)} highlight />
+                <PriceRow label="Standard total" amount={orderDraft.totals.standardTotal} highlight />
                 {isExpress && (
                   <>
-                    <PriceRow label="Express surcharge" value={`+${formatNaira(orderDraft.totals.expressPremium)}`} />
-                    <PriceRow label="Express delivery" value={`+${formatNaira(orderDraft.totals.expressDeliveryFee)}`} />
-                    <PriceRow label="Express Total" value={formatNaira(orderDraft.totals.expressTotal)} highlight />
+                    <PriceRow label="Express surcharge" amount={orderDraft.totals.expressPremium} prefix="+" />
+                    <PriceRow label="Express delivery" amount={orderDraft.totals.expressDeliveryFee} prefix="+" />
+                    <PriceRow label="Express total" amount={orderDraft.totals.expressTotal} highlight />
                   </>
                 )}
               </Animated.View>
 
-              {/* Express Upgrade Nudge */}
+              {/* Delivery speed context */}
               <Animated.View style={[styles.expressNudge, { opacity: fadeAnim }]}>
-                <Ionicons name="flash" size={18} color={LaundryTheme.colors.primaryDark} />
+                <Ionicons
+                  name={isExpress ? "flash" : "time-outline"}
+                  size={18}
+                  color={LaundryTheme.colors.primaryDark}
+                />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.nudgeTitle}>Want it faster?</Text>
+                  <Text style={styles.nudgeTitle}>
+                    {isExpress ? "Express delivery selected" : "Need it sooner?"}
+                  </Text>
                   <Text style={styles.nudgeBody}>
-                    Express adds {formatNaira(orderDraft.totals.expressPremium)} surcharge + {formatNaira(orderDraft.totals.expressDeliveryFee)} delivery. Returned in 48hrs.
+                    {isExpress
+                      ? "Returned within 24 hours from the time your order is placed."
+                      : `Upgrade at checkout for ${formatNaira(
+                          orderDraft.totals.expressPremium +
+                            orderDraft.totals.expressDeliveryFee,
+                        )} more and receive it within 24 hours.`}
                   </Text>
                 </View>
               </Animated.View>
@@ -452,29 +615,38 @@ export default function PaymentScreen() {
           )}
 
           {/* Pay Button */}
-          <View style={{ paddingBottom: 12, paddingTop: 6, marginBottom: LaundryTheme.layout.bottomMenuSpace }}>
+          <View style={{ paddingBottom: 12, paddingTop: 6 }}>
             <SoftPressable
               onPress={handlePayPress}
               style={[styles.payButton, !orderDraft && styles.payButtonDisabled]}
             >
               <Ionicons name="card-outline" size={20} color="#fff" />
-              <Text style={styles.payText}>Pay {formatNaira(payableAmount)}</Text>
+              <Text style={styles.payText}>Pay securely</Text>
+              <View style={styles.payDivider} />
+              <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.76}
+                style={styles.payAmount}
+              >
+                {formatNaira(payableAmount)}
+              </Text>
             </SoftPressable>
           </View>
         </View>
 
         {/* ── Processing Overlay ── */}
-        {isProcessingPayment && (
+        {isProcessingPayment && !showExpressModal && !paymentUrl && (
           <View style={styles.processingOverlay}>
             <View style={styles.processingCard}>
               <ActivityIndicator color={LaundryTheme.colors.primary} size="large" />
-              <Text style={styles.processingTitle}>Verifying Payment…</Text>
-              <Text style={styles.processingBody}>Please wait while we confirm your transaction with Paystack.</Text>
+              <Text style={styles.processingTitle}>Securing your order…</Text>
+              <Text style={styles.processingBody}>Please wait while we prepare your selected payment option.</Text>
             </View>
           </View>
         )}
 
-        {/* ── Express Choice Modal ── */}
+        {/* ── Order confirmation modal ── */}
         <Modal
           animationType="none"
           transparent
@@ -485,8 +657,10 @@ export default function PaymentScreen() {
             <Animated.View style={[styles.modalCard, { transform: [{ translateY: modalSlide }] }]}>
               <SafeAreaView edges={["bottom"]} style={{ width: "100%" }}>
                 <View style={styles.modalHandle} />
-                <Text style={styles.modalTitle}>Choose delivery speed</Text>
-                <Text style={styles.modalBody}>Select Standard or Express for faster returns.</Text>
+                <Text style={styles.modalTitle}>Review checkout</Text>
+                <Text style={styles.modalBody}>
+                  Your step 1 choice is preselected. Review the price and upgrade if needed.
+                </Text>
 
                 {orderDraft ? (
                   <>
@@ -497,10 +671,17 @@ export default function PaymentScreen() {
                       <View style={styles.optionHeader}>
                         <View style={{ flex: 1 }}>
                           <Text style={styles.optionTitle}>Standard</Text>
-                          <Text style={styles.optionDetail}>Returned in 72 hours</Text>
+                          <Text style={styles.optionDetail}>Returned within 72 hours (3 days)</Text>
                         </View>
                         <View style={{ alignItems: "flex-end", marginLeft: 12 }}>
-                          <Text style={styles.optionAmount}>{formatNaira(orderDraft.totals.standardTotal)}</Text>
+                          <Text
+                            numberOfLines={1}
+                            adjustsFontSizeToFit
+                            minimumFontScale={0.72}
+                            style={styles.optionAmount}
+                          >
+                            {formatNaira(orderDraft.totals.standardTotal)}
+                          </Text>
                           {!isExpress && <Ionicons name="checkmark-circle" size={20} color={LaundryTheme.colors.primary} />}
                         </View>
                       </View>
@@ -514,11 +695,21 @@ export default function PaymentScreen() {
                         <View style={{ flex: 1 }}>
                           <Text style={styles.optionTitle}>⚡ Express</Text>
                           <Text style={styles.optionDetail}>
-                            +{formatNaira(orderDraft.totals.expressPremium)} surcharge • 48hr return
+                            +{formatNaira(
+                              orderDraft.totals.expressPremium +
+                                orderDraft.totals.expressDeliveryFee,
+                            )} • returned within 24 hours
                           </Text>
                         </View>
                         <View style={{ alignItems: "flex-end", marginLeft: 12 }}>
-                          <Text style={styles.optionAmount}>{formatNaira(orderDraft.totals.expressTotal)}</Text>
+                          <Text
+                            numberOfLines={1}
+                            adjustsFontSizeToFit
+                            minimumFontScale={0.72}
+                            style={styles.optionAmount}
+                          >
+                            {formatNaira(orderDraft.totals.expressTotal)}
+                          </Text>
                           {isExpress && <Ionicons name="checkmark-circle" size={20} color={LaundryTheme.colors.primary} />}
                         </View>
                       </View>
@@ -526,8 +717,42 @@ export default function PaymentScreen() {
                   </>
                 ) : null}
 
+                <Text style={styles.paymentSectionLabel}>PAYMENT METHOD</Text>
+                <View style={styles.paymentMethodRow}>
+                  <SoftPressable
+                    onPress={() => setPaymentMethod("paystack")}
+                    style={[styles.paymentMethodCard, paymentMethod === "paystack" && styles.paymentMethodCardActive]}
+                  >
+                    <Ionicons name="card-outline" size={21} color={LaundryTheme.colors.primaryDark} />
+                    <View style={styles.paymentMethodCopy}>
+                      <Text style={styles.paymentMethodTitle}>Pay now</Text>
+                      <Text style={styles.paymentMethodDetail}>Secure Paystack checkout</Text>
+                    </View>
+                    {paymentMethod === "paystack" ? <Ionicons name="checkmark-circle" size={20} color={LaundryTheme.colors.primary} /> : null}
+                  </SoftPressable>
+
+                  {payOnDeliveryEligible ? (
+                    <SoftPressable
+                      onPress={() => setPaymentMethod("pay_on_delivery")}
+                      style={[styles.paymentMethodCard, paymentMethod === "pay_on_delivery" && styles.paymentMethodCardActive]}
+                    >
+                      <Ionicons name="hand-left-outline" size={21} color={LaundryTheme.colors.primaryDark} />
+                      <View style={styles.paymentMethodCopy}>
+                        <Text style={styles.paymentMethodTitle}>Pay on delivery</Text>
+                        <Text style={styles.paymentMethodDetail}>Trust option for your first order</Text>
+                      </View>
+                      {paymentMethod === "pay_on_delivery" ? <Ionicons name="checkmark-circle" size={20} color={LaundryTheme.colors.primary} /> : null}
+                    </SoftPressable>
+                  ) : isLoadingPaymentOptions ? (
+                    <View style={styles.paymentOptionLoading}>
+                      <ActivityIndicator size="small" color={LaundryTheme.colors.primary} />
+                      <Text style={styles.paymentMethodDetail}>Checking first-order option…</Text>
+                    </View>
+                  ) : null}
+                </View>
+
                 <View style={styles.modalActionRow}>
-                  <SoftPressable onPress={() => setShowExpressModal(false)} style={styles.modalGhostButton}>
+                  <SoftPressable onPress={() => void dismissCheckoutSheet()} style={styles.modalGhostButton}>
                     <Text style={styles.modalGhostText}>Cancel</Text>
                   </SoftPressable>
                   <SoftPressable
@@ -537,7 +762,14 @@ export default function PaymentScreen() {
                     {isProcessingPayment ? (
                       <ActivityIndicator color="#FFFFFF" size="small" />
                     ) : (
-                      <Text style={styles.modalPrimaryText}>Confirm {formatNaira(payableAmount)}</Text>
+                      <Text
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                        minimumFontScale={0.72}
+                        style={styles.modalPrimaryText}
+                      >
+                        {paymentMethod === "pay_on_delivery" ? "Confirm order" : `Pay ${formatNaira(payableAmount)}`}
+                      </Text>
                     )}
                   </SoftPressable>
                 </View>
@@ -598,6 +830,11 @@ export default function PaymentScreen() {
             </SafeAreaView>
           </Modal>
         ) : null}
+
+        <OrderTransitionOverlay
+          visible={isLeavingCheckout}
+          label="Returning to your order review…"
+        />
       </SafeAreaView>
     </LinearGradient>
   );
@@ -606,6 +843,23 @@ export default function PaymentScreen() {
 // ──────────────────────────────────────────────
 // Sub-components
 // ──────────────────────────────────────────────
+
+function CardHeader({
+  icon,
+  title,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  title: string;
+}) {
+  return (
+    <View style={styles.cardHeader}>
+      <View style={styles.cardHeaderIcon}>
+        <Ionicons name={icon} size={17} color={LaundryTheme.colors.primaryDark} />
+      </View>
+      <Text style={styles.cardTitle}>{title}</Text>
+    </View>
+  );
+}
 
 function RecapRow({ label, value }: { label: string; value: string }) {
   return (
@@ -616,11 +870,28 @@ function RecapRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function PriceRow({ label, value, highlight = false }: { label: string; value: string; highlight?: boolean }) {
+function PriceRow({
+  label,
+  amount,
+  prefix = "",
+  highlight = false,
+}: {
+  label: string;
+  amount: number;
+  prefix?: string;
+  highlight?: boolean;
+}) {
   return (
     <View style={styles.priceRow}>
       <Text style={[styles.priceLabel, highlight && styles.priceHighlight]}>{label}</Text>
-      <Text style={[styles.priceValue, highlight && styles.priceHighlight]}>{value}</Text>
+      <Text
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.72}
+        style={[styles.priceValue, highlight && styles.priceHighlight]}
+      >
+        {prefix}{formatNaira(amount)}
+      </Text>
     </View>
   );
 }
@@ -633,8 +904,8 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   safeArea: { flex: 1 },
   scrollView: { flex: 1 },
-  content: { flex: 1, paddingHorizontal: 20, paddingTop: 8 },
-  scrollContent: { paddingBottom: LaundryTheme.layout.bottomMenuSpace + 90 },
+  content: { flex: 1, paddingHorizontal: 14, paddingTop: 8 },
+  scrollContent: { paddingBottom: 22 },
 
   // Header
   headerBlock: { marginBottom: 6 },
@@ -647,6 +918,7 @@ const styles = StyleSheet.create({
     width: 38, height: 38, borderRadius: 999,
     alignItems: "center", justifyContent: "center",
     backgroundColor: "#fff",
+    ...LaundryTheme.shadow.soft,
   },
   title: { fontSize: 22, fontWeight: "900", color: LaundryTheme.colors.ink, paddingVertical: 4, paddingHorizontal: 2 },
   secureBadge: {
@@ -657,21 +929,58 @@ const styles = StyleSheet.create({
   secureBadgeText: { fontSize: 11, fontWeight: "800", color: LaundryTheme.colors.primaryDark },
 
   // Total Hero
-  totalHero: { marginTop: 10, marginBottom: 14 },
+  totalHero: { marginTop: 10, marginBottom: 15 },
   totalGradient: {
-    borderRadius: 22, padding: 24, alignItems: "center",
+    minHeight: 168,
+    borderRadius: 26,
+    padding: 18,
+    overflow: "hidden",
     ...LaundryTheme.shadow.strong,
   },
-  totalLabel: { color: "rgba(255,255,255,0.8)", fontSize: 14, fontWeight: "700", paddingVertical: 2 },
-  totalAmount: { color: "#fff", fontSize: 36, fontWeight: "900", marginTop: 4, letterSpacing: -1, lineHeight: 44, paddingVertical: 2 },
-  totalMeta: { color: "rgba(255,255,255,0.7)", fontSize: 14, fontWeight: "600", marginTop: 6 },
+  heroOrbLarge: {
+    position: "absolute", width: 150, height: 150, borderRadius: 75,
+    right: -42, top: -58, backgroundColor: "rgba(255,255,255,0.08)",
+  },
+  heroOrbSmall: {
+    position: "absolute", width: 92, height: 92, borderRadius: 46,
+    right: 46, bottom: -48, backgroundColor: "rgba(255,255,255,0.07)",
+  },
+  heroContent: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8 },
+  heroCopy: { flex: 1, minWidth: 0 },
+  heroBadge: {
+    alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 5,
+    borderRadius: 999, paddingHorizontal: 8, paddingVertical: 5,
+    backgroundColor: "rgba(255,255,255,0.12)", marginBottom: 14,
+  },
+  heroBadgeText: { color: "#F8D66D", fontSize: 8.5, fontWeight: "900", letterSpacing: 0.8 },
+  totalLabel: { color: "rgba(255,255,255,0.76)", fontSize: 12, fontWeight: "700" },
+  totalAmount: {
+    color: "#fff", fontSize: 34, fontWeight: "900", marginTop: 2,
+    letterSpacing: -1, lineHeight: 42, paddingVertical: 1, width: "100%",
+  },
+  totalMeta: { color: "rgba(255,255,255,0.78)", fontSize: 11.5, fontWeight: "700", marginTop: 5 },
+  heroPreviewStack: { width: 92, flexDirection: "row", justifyContent: "flex-end", alignItems: "center" },
+  heroPreviewCard: {
+    width: 44, height: 54, borderRadius: 14, padding: 3,
+    alignItems: "center", justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.94)",
+    borderWidth: 1.5, borderColor: "rgba(255,255,255,0.8)",
+    ...LaundryTheme.shadow.soft,
+  },
+  heroPreviewImage: { width: "100%", height: "100%" },
 
   // Cards
   card: {
     ...LaundryTheme.glass,
-    borderRadius: 20, padding: 18, marginBottom: 14,
+    borderRadius: 22, padding: 17, marginBottom: 13,
+    backgroundColor: "rgba(255,255,255,0.94)",
   },
-  cardTitle: { fontSize: 17, fontWeight: "800", color: LaundryTheme.colors.ink, marginBottom: 12, paddingVertical: 2 },
+  cardHeader: { flexDirection: "row", alignItems: "center", gap: 9, marginBottom: 14 },
+  cardHeaderIcon: {
+    width: 34, height: 34, borderRadius: 12, alignItems: "center", justifyContent: "center",
+    backgroundColor: LaundryTheme.colors.primarySoft,
+  },
+  cardTitle: { fontSize: 16, fontWeight: "900", color: LaundryTheme.colors.ink },
 
   // Recap rows
   recapRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 10, alignItems: "center" },
@@ -679,15 +988,15 @@ const styles = StyleSheet.create({
   recapValue: { fontSize: 15, color: LaundryTheme.colors.ink, fontWeight: "700", flex: 1, marginLeft: 16, textAlign: "right" },
 
   // Price rows
-  priceRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 8, alignItems: "center" },
-  priceLabel: { fontSize: 14, color: LaundryTheme.colors.muted, fontWeight: "600", flexShrink: 1, paddingVertical: 4, paddingHorizontal: 2 },
-  priceValue: { fontSize: 14, color: LaundryTheme.colors.ink, fontWeight: "700", flexShrink: 0, marginLeft: 8, lineHeight: 20, paddingVertical: 2 },
-  priceHighlight: { color: LaundryTheme.colors.primaryDark, fontWeight: "900", fontSize: 18, lineHeight: 24, paddingVertical: 2 },
+  priceRow: { flexDirection: "row", marginBottom: 8, alignItems: "center", gap: 10 },
+  priceLabel: { flex: 1, minWidth: 0, fontSize: 13.5, color: LaundryTheme.colors.muted, fontWeight: "600", paddingVertical: 4 },
+  priceValue: { width: "43%", fontSize: 14, color: LaundryTheme.colors.ink, fontWeight: "800", textAlign: "right", lineHeight: 21, paddingVertical: 2 },
+  priceHighlight: { color: LaundryTheme.colors.primaryDark, fontWeight: "900", fontSize: 16.5, lineHeight: 23 },
   divider: { height: 1, backgroundColor: "rgba(0,0,0,0.06)", marginVertical: 10 },
 
   // Express nudge
   expressNudge: {
-    ...LaundryTheme.glass,
+    // ...LaundryTheme.glass,
     borderRadius: 16, padding: 14,
     flexDirection: "row", alignItems: "flex-start", gap: 10,
     marginBottom: 14,
@@ -698,11 +1007,14 @@ const styles = StyleSheet.create({
   // Pay CTA
   payButton: {
     borderRadius: 18, paddingVertical: 18,
+    paddingHorizontal: 18,
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
     backgroundColor: LaundryTheme.colors.primary,
     ...LaundryTheme.shadow.strong,
   },
-  payText: { color: "#fff", fontWeight: "900", fontSize: 17, lineHeight: 24, paddingVertical: 2 },
+  payText: { color: "#fff", fontWeight: "900", fontSize: 16, lineHeight: 22 },
+  payDivider: { width: 1, height: 18, backgroundColor: "rgba(255,255,255,0.32)", marginHorizontal: 2 },
+  payAmount: { maxWidth: "44%", color: "#fff", fontWeight: "900", fontSize: 17, lineHeight: 23 },
   payButtonDisabled: { opacity: 0.45 },
 
   // Empty state
@@ -765,8 +1077,31 @@ const styles = StyleSheet.create({
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
   },
   optionTitle: { fontWeight: "800", fontSize: 17, color: LaundryTheme.colors.ink },
-  optionAmount: { fontSize: 20, fontWeight: "900", color: LaundryTheme.colors.primaryDark, marginBottom: 2 },
+  optionAmount: { width: 126, textAlign: "right", fontSize: 20, fontWeight: "900", color: LaundryTheme.colors.primaryDark, marginBottom: 2 },
   optionDetail: { fontSize: 13, color: LaundryTheme.colors.muted, marginTop: 2 },
+
+  paymentSectionLabel: {
+    marginTop: 16, marginBottom: 7, fontSize: 10, fontWeight: "900",
+    letterSpacing: 1.1, color: LaundryTheme.colors.muted,
+  },
+  paymentMethodRow: { gap: 8 },
+  paymentMethodCard: {
+    minHeight: 58, borderRadius: 15, paddingHorizontal: 13, paddingVertical: 10,
+    flexDirection: "row", alignItems: "center", gap: 10,
+    borderWidth: 1.5, borderColor: "rgba(0,0,0,0.06)", backgroundColor: "#fff",
+  },
+  paymentMethodCardActive: {
+    borderColor: LaundryTheme.colors.primary,
+    backgroundColor: LaundryTheme.colors.primarySoft,
+  },
+  paymentMethodCopy: { flex: 1, minWidth: 0 },
+  paymentMethodTitle: { fontSize: 14, fontWeight: "900", color: LaundryTheme.colors.ink },
+  paymentMethodDetail: { marginTop: 1, fontSize: 11.5, color: LaundryTheme.colors.muted },
+  paymentOptionLoading: {
+    minHeight: 48, borderRadius: 14, paddingHorizontal: 13,
+    flexDirection: "row", alignItems: "center", gap: 10,
+    backgroundColor: "rgba(109,40,217,0.05)",
+  },
 
   modalActionRow: { flexDirection: "row", gap: 12, marginTop: 20 },
   modalGhostButton: {
@@ -780,7 +1115,7 @@ const styles = StyleSheet.create({
     alignItems: "center", backgroundColor: LaundryTheme.colors.primary,
     ...LaundryTheme.shadow.soft,
   },
-  modalPrimaryText: { color: "#fff", fontWeight: "900", fontSize: 15 },
+  modalPrimaryText: { width: "100%", textAlign: "center", color: "#fff", fontWeight: "900", fontSize: 15 },
 
   // Embedded WebView Modal
   webHeader: {

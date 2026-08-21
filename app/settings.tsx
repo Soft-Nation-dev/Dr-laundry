@@ -4,6 +4,8 @@ import { LaundryTheme } from "@/constants/laundry-theme";
 import { setAppMode } from "@/lib/app-mode";
 import { clearAuthSession } from "@/lib/auth-storage";
 import { getProfile, uploadProfilePhoto } from "@/lib/profile-api";
+import { disableCurrentDevicePushToken } from "@/lib/push-notifications";
+import { canManageRoles, canUseDriverMode, canViewAdminOrders, getLandingRoute } from "@/lib/role-routing";
 import type { Profile } from "@/types/profile";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
@@ -155,7 +157,7 @@ export default function SettingsScreen() {
 
   const goBack = () => {
     if (router.canGoBack()) router.back();
-    else router.replace("/home");
+    else router.replace(getLandingRoute(profile?.role ?? "customer") as never);
   };
 
   const chooseProfilePhoto = async () => {
@@ -200,6 +202,8 @@ export default function SettingsScreen() {
   };
 
   const selectMode = (mode: "customer" | "driver") => {
+    if (!profile || !canUseDriverMode(profile.role)) return;
+    if (profile.role === "driver" && mode === "customer") return;
     if (mode === activeMode) return;
     setActiveMode(mode);
     Animated.spring(modePosition, {
@@ -219,6 +223,7 @@ export default function SettingsScreen() {
     if (signingOut) return;
     setSigningOut(true);
     try {
+      await disableCurrentDevicePushToken();
       await clearAuthSession();
       setShowLogout(false);
       router.replace("/login");
@@ -321,7 +326,7 @@ export default function SettingsScreen() {
               {profile?.email || "Dr Laundry customer"}
             </Text>
 
-            <View style={styles.modeSwitch}>
+            {profile && canUseDriverMode(profile.role) && profile.role !== "driver" ? <View style={styles.modeSwitch}>
               <Animated.View
                 style={[
                   styles.modeIndicator,
@@ -357,7 +362,7 @@ export default function SettingsScreen() {
                   Driver
                 </Text>
               </Pressable>
-            </View>
+            </View> : profile ? <View style={styles.accessPill}><Ionicons name="shield-checkmark" size={12} color="#FFFFFF" /><Text style={styles.accessPillText}>{profile.role.toUpperCase()}</Text></View> : null}
           </SafeAreaView>
         </LinearGradient>
       </Animated.View>
@@ -401,6 +406,27 @@ export default function SettingsScreen() {
             </SoftPressable>
           ) : null}
 
+          {profile && canUseDriverMode(profile.role) ? (
+            <Animated.View style={animatedSection(0)}>
+              <Text style={styles.sectionLabel}>WORKSPACE ACCESS</Text>
+              <View style={styles.groupCard}>
+                {profile.role === "superadmin" ? <>
+                  <SettingsRow icon="grid-outline" label="Superadmin panel" detail="App access, operations and account roles" onPress={() => router.push("/admin" as never)} />
+                  <View style={styles.divider} />
+                </> : null}
+                {canViewAdminOrders(profile.role) ? <>
+                  <SettingsRow icon="receipt-outline" label="Available orders" detail="Track every customer order from the backend" onPress={() => router.push("/admin/orders" as never)} />
+                  <View style={styles.divider} />
+                </> : null}
+                {canManageRoles(profile.role) ? <>
+                  <SettingsRow icon="people-outline" label="Manage app roles" detail="Assign customer, driver and admin access" onPress={() => router.push("/admin/users" as never)} />
+                  <View style={styles.divider} />
+                </> : null}
+                <SettingsRow icon="car-sport-outline" label="Driver mode" detail="Open pickups and delivery tasks" onPress={() => selectMode("driver")} />
+              </View>
+            </Animated.View>
+          ) : null}
+
           <Animated.View style={animatedSection(0)}>
             <Text style={styles.sectionLabel}>ACCOUNT</Text>
             <View style={styles.groupCard}>
@@ -420,7 +446,7 @@ export default function SettingsScreen() {
             </View>
           </Animated.View>
 
-          <Animated.View style={animatedSection(1)}>
+          {profile?.role === "customer" ? <Animated.View style={animatedSection(1)}>
             <Text style={styles.sectionLabel}>LAUNDRY SERVICE</Text>
             <View style={styles.groupCard}>
               <SettingsRow
@@ -439,7 +465,7 @@ export default function SettingsScreen() {
                 onPress={() => router.push("/support")}
               />
             </View>
-          </Animated.View>
+          </Animated.View> : null}
 
           <Animated.View style={animatedSection(2)}>
             <Text style={styles.sectionLabel}>SESSION</Text>
@@ -534,6 +560,8 @@ const styles = StyleSheet.create({
   modeOption: { width: 70, height: 26, flexDirection: "row", gap: 4, alignItems: "center", justifyContent: "center", zIndex: 1 },
   modeText: { color: "#EADFFF", fontSize: 9, fontWeight: "800" },
   modeTextActive: { color: LaundryTheme.colors.primaryDark },
+  accessPill: { marginTop: 11, flexDirection: "row", alignItems: "center", gap: 6, borderRadius: 99, paddingHorizontal: 11, paddingVertical: 7, backgroundColor: "rgba(26,8,54,0.28)", borderWidth: 1, borderColor: "rgba(255,255,255,0.18)" },
+  accessPillText: { color: "#FFFFFF", fontSize: 9, fontWeight: "900", letterSpacing: 0.8 },
   sheet: { flex: 1, marginTop: -26, paddingTop: 9, borderTopLeftRadius: 30, borderTopRightRadius: 30, backgroundColor: "#FCFAFF", overflow: "hidden" },
   sheetHandle: { alignSelf: "center", width: 38, height: 4, borderRadius: 2, backgroundColor: "#DED5EA" },
   sheetHeading: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 4, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },

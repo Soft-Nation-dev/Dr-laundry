@@ -1,5 +1,5 @@
-import { supabase } from "@/lib/supabase-client";
 import type { ApiResponse } from "@/lib/api-client";
+import { supabase } from "@/lib/supabase-client";
 import type { AuthTokens } from "@/types/auth";
 import * as Linking from "expo-linking";
 
@@ -175,17 +175,25 @@ export async function login(
     });
 
     if (error) {
+      const requiresEmailConfirmation =
+        error.code === "email_not_confirmed" ||
+        error.message.toLowerCase().includes("email not confirmed");
       return {
         success: false,
         message: getSupabaseAuthMessage(error),
-        data: { accessToken: "", refreshToken: "" },
+        data: {
+          accessToken: "",
+          refreshToken: "",
+          requiresEmailConfirmation,
+        },
       };
     }
 
     if (!resData.session?.access_token) {
       return {
         success: false,
-        message: "No Supabase session was returned. Confirm your email and try again.",
+        message:
+          "No Supabase session was returned. Confirm your email and try again.",
         data: { accessToken: "", refreshToken: "" },
       };
     }

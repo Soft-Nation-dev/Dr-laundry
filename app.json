@@ -9,26 +9,19 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true,
-      "config": {
-        "googleMapsApiKey": "AIzaSyCTuIsYFQ_l_RSsWYhdDqPubgJo9gZCwsI"
-      }
+      "supportsTablet": true
     },
     "android": {
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#3B5BDB",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
+      "softwareKeyboardLayoutMode": "resize",
       "predictiveBackGestureEnabled": false,
-      "package": "com.ojamdev.drlaundry",
-      "config": {
-        "googleMaps": {
-          "apiKey": "AIzaSyCTuIsYFQ_l_RSsWYhdDqPubgJo9gZCwsI"
-        }
-      }
+      "package": "com.ojamdev.drlaundry"
     },
     "web": {
       "output": "static",
@@ -52,6 +45,24 @@
         "expo-image-picker",
         {
           "photosPermission": "Allow Dr Laundry to choose a profile photo."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/android-icon-monochrome.png",
+          "color": "#6A1BB1",
+          "defaultChannel": "order-updates"
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow Dr Laundry to use your location while you complete an assigned pickup or delivery.",
+          "locationAlwaysAndWhenInUsePermission": "Allow Dr Laundry drivers to share their location during an active customer journey, including while the app is in the background.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true,
+          "isIosBackgroundLocationEnabled": true
         }
       ]
     ],

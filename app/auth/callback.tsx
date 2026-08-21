@@ -1,11 +1,18 @@
 import { LaundryTheme } from "@/constants/laundry-theme";
 import { syncCurrentUserProfile } from "@/lib/auth-api";
+import { getProfile } from "@/lib/profile-api";
+import { clearPendingEmailVerification } from "@/lib/pending-email-verification";
+import {
+  OperationTimeoutError,
+  withTimeout,
+} from "@/lib/promise-timeout";
+import { getLandingRoute } from "@/lib/role-routing";
 import { supabase } from "@/lib/supabase-client";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import * as Linking from "expo-linking";
 import { router } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -16,43 +23,73 @@ function readAuthParams(url: string) {
 
 export default function AuthCallbackScreen() {
   const [errorMessage, setErrorMessage] = useState("");
+  const isProcessingLink = useRef(false);
 
   useEffect(() => {
     let active = true;
 
     const finishAuth = async (url: string | null) => {
+      if (isProcessingLink.current) return;
+
       if (!url) {
         if (active) setErrorMessage("The confirmation link is incomplete.");
         return;
       }
 
-      const params = readAuthParams(url);
-      const code = params.get("code");
-      const accessToken = params.get("access_token");
-      const refreshToken = params.get("refresh_token");
-      const errorDescription = params.get("error_description");
+      isProcessingLink.current = true;
 
-      if (errorDescription) {
-        if (active) setErrorMessage(errorDescription.replace(/\+/g, " "));
-        return;
+      try {
+        const params = readAuthParams(url);
+        const code = params.get("code");
+        const accessToken = params.get("access_token");
+        const refreshToken = params.get("refresh_token");
+        const errorDescription = params.get("error_description");
+
+        if (errorDescription) {
+          if (active) setErrorMessage(errorDescription.replace(/\+/g, " "));
+          isProcessingLink.current = false;
+          return;
+        }
+
+        const landingRoute = await withTimeout(
+          (async () => {
+            const result = code
+              ? await supabase.auth.exchangeCodeForSession(code)
+              : accessToken && refreshToken
+                ? await supabase.auth.setSession({
+                    access_token: accessToken,
+                    refresh_token: refreshToken,
+                  })
+                : {
+                    error: new Error(
+                      "No authentication session was found in the link.",
+                    ),
+                  };
+
+            if (result.error) throw result.error;
+
+            await clearPendingEmailVerification();
+            await syncCurrentUserProfile();
+            const profile = await getProfile();
+            return getLandingRoute(profile.data?.role ?? "customer");
+          })(),
+          30_000,
+          "Email confirmation timed out.",
+        );
+
+        if (active) router.replace(landingRoute as never);
+      } catch (error) {
+        isProcessingLink.current = false;
+        if (active) {
+          setErrorMessage(
+            error instanceof OperationTimeoutError
+              ? "Confirmation took longer than 30 seconds. Check your connection and try the link again."
+              : error instanceof Error
+                ? error.message
+                : "The confirmation link could not be completed.",
+          );
+        }
       }
-
-      const result = code
-        ? await supabase.auth.exchangeCodeForSession(code)
-        : accessToken && refreshToken
-          ? await supabase.auth.setSession({
-              access_token: accessToken,
-              refresh_token: refreshToken,
-            })
-          : { error: new Error("No authentication session was found in the link.") };
-
-      if (!active) return;
-      if (result.error) {
-        setErrorMessage(result.error.message);
-        return;
-      }
-      await syncCurrentUserProfile();
-      router.replace("/home");
     };
 
     Linking.getInitialURL().then(finishAuth);
@@ -87,8 +124,8 @@ export default function AuthCallbackScreen() {
         {errorMessage || "Hold on while we securely sign you in."}
       </Text>
       {errorMessage ? (
-        <Text style={styles.link} onPress={() => router.replace("/login")}>
-          Return to sign in
+        <Text style={styles.link} onPress={() => router.replace("/")}>
+          Return to verification
         </Text>
       ) : (
         <ActivityIndicator color={LaundryTheme.colors.primary} style={styles.loader} />

@@ -9,36 +9,41 @@ type MenuItem = {
   key: "home" | "history" | "track" | "profile";
   label: string;
   icon: keyof typeof Ionicons.glyphMap;
+  activeIcon: keyof typeof Ionicons.glyphMap;
   route: string;
 };
 
-const hiddenRoutes = [
-  "/",
-  "/login",
-  "/verify-email",
-  "/forgot-password",
-  "/reset-password",
-  "/modal",
+// Top-level tab destinations where the bottom menu is visible.
+// On all child screens, checkout flows, chat/support, deep order details, and forms,
+// the bottom navigation is hidden to preserve focus and avoid accidental navigation.
+const TOP_LEVEL_TAB_ROUTES = [
+  "/home",
+  "/order-history",
+  "/track-order",
+  "/profile",
 ];
 
 const menuItems: MenuItem[] = [
-  { key: "home", label: "Home", icon: "home", route: "/home" },
+  { key: "home", label: "Home", icon: "home-outline", activeIcon: "home", route: "/home" },
   {
     key: "history",
-    label: "History",
+    label: "Orders",
     icon: "receipt-outline",
+    activeIcon: "receipt",
     route: "/order-history",
   },
   {
     key: "track",
     label: "Track",
     icon: "navigate-outline",
+    activeIcon: "navigate",
     route: "/track-order",
   },
   {
     key: "profile",
     label: "Profile",
-    icon: "person-circle-outline",
+    icon: "person-outline",
+    activeIcon: "person",
     route: "/profile",
   },
 ];
@@ -46,28 +51,18 @@ const menuItems: MenuItem[] = [
 function resolveActiveKey(pathname: string): MenuItem["key"] | null {
   if (pathname.startsWith("/home")) return "home";
   if (pathname.startsWith("/order-history")) return "history";
-  if (
-    pathname.startsWith("/track-order") ||
-    pathname.startsWith("/pickup-map") ||
-    pathname.startsWith("/order-complete")
-  ) {
-    return "track";
-  }
-  if (
-    pathname.startsWith("/profile") ||
-    pathname.startsWith("/settings") ||
-    pathname.startsWith("/membership") ||
-    pathname.startsWith("/support")
-  ) {
-    return "profile";
-  }
+  if (pathname.startsWith("/track-order")) return "track";
+  if (pathname.startsWith("/profile")) return "profile";
   return null;
 }
 
 export function RootBottomMenu() {
   const pathname = usePathname();
 
-  if (hiddenRoutes.includes(pathname) || pathname.startsWith("/driver")) {
+  // Rule of Thumb: Only show the bottom navigation bar on top-level tab destinations.
+  // Hide on all child pages, checkout funnels, forms, chat, and detail screens.
+  const isTopLevelTab = TOP_LEVEL_TAB_ROUTES.includes(pathname);
+  if (!isTopLevelTab) {
     return null;
   }
 
@@ -81,6 +76,19 @@ export function RootBottomMenu() {
         style={styles.safeArea}
       >
         <View style={styles.shell}>
+          {/* Floating Callout Pill above + button on Home screen */}
+          {pathname === "/home" && (
+            <View style={styles.calloutWrap}>
+              <SoftPressable
+                onPress={() => router.push("/new-order")}
+                style={styles.calloutPill}
+              >
+                <Text style={styles.calloutText}>+ Book New Service</Text>
+              </SoftPressable>
+              <View style={styles.calloutArrow} />
+            </View>
+          )}
+
           <View style={styles.bar}>
             {menuItems.slice(0, 2).map((item) => {
               const active = item.key === activeKey;
@@ -91,8 +99,8 @@ export function RootBottomMenu() {
                   style={styles.menuItem}
                 >
                   <Ionicons
-                    name={item.icon}
-                    size={21}
+                    name={active ? item.activeIcon : item.icon}
+                    size={22}
                     color={
                       active
                         ? LaundryTheme.colors.primary
@@ -104,16 +112,20 @@ export function RootBottomMenu() {
                   >
                     {item.label}
                   </Text>
+                  {active && <View style={styles.activeDot} />}
                 </SoftPressable>
               );
             })}
 
+            {/* Center + Button */}
             <SoftPressable
               onPress={() => router.push("/new-order")}
               style={styles.centerBtn}
             >
-              <View style={styles.centerInner}>
-                <Ionicons name="add" size={20} color="#fff" />
+              <View style={styles.centerOuterGlow}>
+                <View style={styles.centerInner}>
+                  <Ionicons name="add" size={24} color="#fff" />
+                </View>
               </View>
             </SoftPressable>
 
@@ -126,8 +138,8 @@ export function RootBottomMenu() {
                   style={styles.menuItem}
                 >
                   <Ionicons
-                    name={item.icon}
-                    size={21}
+                    name={active ? item.activeIcon : item.icon}
+                    size={22}
                     color={
                       active
                         ? LaundryTheme.colors.primary
@@ -139,12 +151,11 @@ export function RootBottomMenu() {
                   >
                     {item.label}
                   </Text>
+                  {active && <View style={styles.activeDot} />}
                 </SoftPressable>
               );
             })}
           </View>
-
-          {/* FAB removed: integrated into the menu bar as center button */}
         </View>
       </SafeAreaView>
     </View>
@@ -157,50 +168,96 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   shell: {
-    marginHorizontal: 14,
+    marginHorizontal: 16,
     marginBottom: 10,
-    // marginTop: 100,
+    alignItems: "center",
+  },
+  calloutWrap: {
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  calloutPill: {
+    backgroundColor: LaundryTheme.colors.primaryDark,
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    ...LaundryTheme.shadow.soft,
+  },
+  calloutText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  calloutArrow: {
+    width: 0,
+    height: 0,
+    backgroundColor: "transparent",
+    borderStyle: "solid",
+    borderLeftWidth: 6,
+    borderRightWidth: 6,
+    borderTopWidth: 6,
+    borderLeftColor: "transparent",
+    borderRightColor: "transparent",
+    borderTopColor: LaundryTheme.colors.primaryDark,
+    marginTop: -1,
   },
   bar: {
-    height: 70,
-    borderRadius: 24,
+    width: "100%",
+    height: 72,
+    borderRadius: 36,
     borderWidth: 1,
-    borderColor: LaundryTheme.colors.border,
-    backgroundColor: LaundryTheme.colors.card,
+    borderColor: "rgba(255, 255, 255, 0.9)",
+    backgroundColor: "#FFFFFF",
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 10,
+    justifyContent: "space-around",
+    paddingHorizontal: 8,
     ...LaundryTheme.shadow.strong,
   },
   menuItem: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 3,
+    paddingVertical: 6,
+  },
+  centerBtn: {
     width: 64,
     alignItems: "center",
     justifyContent: "center",
-    gap: 4,
+    marginTop: -20,
   },
-  centerBtn: {
-    width: 76,
+  centerOuterGlow: {
+    width: 62,
+    height: 62,
+    borderRadius: 31,
+    backgroundColor: "rgba(76, 16, 125, 0.12)",
     alignItems: "center",
     justifyContent: "center",
   },
   centerInner: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: LaundryTheme.colors.primary,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 4,
-    borderColor: LaundryTheme.colors.card,
     ...LaundryTheme.shadow.strong,
   },
   menuLabel: {
     color: LaundryTheme.colors.muted,
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: "700",
   },
   menuLabelActive: {
     color: LaundryTheme.colors.primary,
+    fontWeight: "900",
+  },
+  activeDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: LaundryTheme.colors.primary,
+    marginTop: 1,
   },
 });

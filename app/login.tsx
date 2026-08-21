@@ -1,11 +1,23 @@
-import {
-  AuthNotice,
-  type AuthNoticeState,
-} from "@/components/auth-notice";
+import { AuthNotice, type AuthNoticeState } from "@/components/auth-notice";
 import { SoftPressable } from "@/components/soft-pressable";
 import { LaundryTheme } from "@/constants/laundry-theme";
-import { login, register, syncCurrentUserProfile } from "@/lib/auth-api";
+import {
+  login,
+  register,
+  syncCurrentUserProfile,
+} from "@/lib/auth-api";
 import { saveAuthSession } from "@/lib/auth-storage";
+import {
+  clearPendingEmailVerification,
+  getPendingEmailVerification,
+  savePendingEmailVerification,
+} from "@/lib/pending-email-verification";
+import { getProfile } from "@/lib/profile-api";
+import {
+  OperationTimeoutError,
+  withTimeout,
+} from "@/lib/promise-timeout";
+import { getLandingRoute } from "@/lib/role-routing";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -28,6 +40,17 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 type AuthMode = "signIn" | "create";
 type RegisterStep = 0 | 1 | 2;
+const AUTH_TIMEOUT_MS = 30_000;
+
+async function getAuthenticatedLandingRoute() {
+  const profile = await getProfile();
+  return getLandingRoute(profile.data?.role ?? "customer");
+}
+
+async function openAuthenticatedHome() {
+  const landingRoute = await getAuthenticatedLandingRoute();
+  router.replace(landingRoute as never);
+}
 
 const REGISTER_STEPS = [
   {
@@ -88,6 +111,30 @@ export default function LoginScreen() {
   const screenRise = useRef(new Animated.Value(20)).current;
   const stepOpacity = useRef(new Animated.Value(1)).current;
   const stepSlide = useRef(new Animated.Value(0)).current;
+  const authScrollRef = useRef<ScrollView>(null);
+
+  const keepFocusedInputVisible = () => {
+    setTimeout(
+      () => authScrollRef.current?.scrollToEnd({ animated: true }),
+      Platform.OS === "android" ? 220 : 100,
+    );
+  };
+
+  useEffect(() => {
+    let active = true;
+
+    getPendingEmailVerification().then((pending) => {
+      if (!active || !pending) return;
+      router.replace({
+        pathname: "/verify-email",
+        params: { email: pending.email },
+      });
+    });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     Animated.parallel([
@@ -203,18 +250,64 @@ export default function LoginScreen() {
       }
 
       setIsSubmitting(true);
+      const loginStartedAt = Date.now();
+      const waitForLogin = <T,>(operation: Promise<T>) =>
+        withTimeout(
+          operation,
+          Math.max(1, AUTH_TIMEOUT_MS - (Date.now() - loginStartedAt)),
+          "Sign in timed out.",
+        );
+
       try {
-        const result = await login({ email: email.trim(), password });
+        const result = await waitForLogin(
+          login({ email: email.trim(), password }),
+        );
         if (!result.success || !result.data?.accessToken) {
+          if (result.data?.requiresEmailConfirmation) {
+            const normalizedEmail = email.trim().toLowerCase();
+            try {
+              await withTimeout(
+                savePendingEmailVerification(normalizedEmail),
+                2_000,
+                "Saving verification state timed out.",
+              );
+            } catch {
+              // The route still carries the email, so verification can continue.
+            }
+            router.replace({
+              pathname: "/verify-email",
+              params: {
+                email: normalizedEmail,
+                status: "unverified",
+                autoResend: "true",
+              },
+            });
+            return;
+          }
           showNotice("Sign in failed", result.message);
           return;
         }
+        await clearPendingEmailVerification();
         await saveAuthSession({
           accessToken: result.data.accessToken,
           refreshToken: result.data.refreshToken,
           email: email.trim(),
         });
-        router.replace("/home");
+        const landingRoute = await waitForLogin(
+          getAuthenticatedLandingRoute(),
+        );
+        router.replace(landingRoute as never);
+      } catch (error) {
+        showNotice(
+          error instanceof OperationTimeoutError
+            ? "Sign in timed out"
+            : "Sign in failed",
+          error instanceof OperationTimeoutError
+            ? "The server took longer than 30 seconds to respond. Check your connection and try again."
+            : error instanceof Error
+              ? error.message
+              : "We could not complete sign in. Please try again.",
+        );
       } finally {
         setIsSubmitting(false);
       }
@@ -225,35 +318,50 @@ export default function LoginScreen() {
 
     setIsSubmitting(true);
     try {
-      const result = await register({
-        email: email.trim().toLowerCase(),
-        password,
-        phoneNumber: phone.trim(),
-        name: fullName.trim(),
-        address: address.trim(),
-      });
+      const result = await withTimeout(
+        register({
+          email: email.trim().toLowerCase(),
+          password,
+          phoneNumber: phone.trim(),
+          name: fullName.trim(),
+          address: address.trim(),
+        }),
+        AUTH_TIMEOUT_MS,
+        "Registration timed out.",
+      );
       if (!result.success) {
         showNotice("Sign up failed", result.message);
         return;
       }
 
       if (!result.data.requiresEmailConfirmation) {
+        await clearPendingEmailVerification();
         await syncCurrentUserProfile();
-        showNotice(
-          "Account created",
-          result.message,
-          "success",
-          () => router.replace("/home"),
-        );
+        showNotice("Account created", result.message, "success", () => void openAuthenticatedHome());
         return;
       }
 
-      showNotice("Check your email", result.message, "success", () => {
-        router.replace({
-          pathname: "/verify-email",
-          params: { email: email.trim().toLowerCase() },
-        });
+      const normalizedEmail = email.trim().toLowerCase();
+      await savePendingEmailVerification(normalizedEmail);
+      router.replace({
+        pathname: "/verify-email",
+        params: {
+          email: normalizedEmail,
+          status: "registered",
+          message: result.message,
+        },
       });
+    } catch (error) {
+      showNotice(
+        error instanceof OperationTimeoutError
+          ? "Sign up timed out"
+          : "Sign up failed",
+        error instanceof OperationTimeoutError
+          ? "The server took longer than 30 seconds to respond. Check your connection and try again."
+          : error instanceof Error
+            ? error.message
+            : "We could not create your account. Please try again.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -270,6 +378,7 @@ export default function LoginScreen() {
             onChangeText={setFullName}
             placeholder="your full name"
             autoComplete="name"
+            onFocus={keepFocusedInputVisible}
           />
           <AuthInput
             label="Email address"
@@ -280,6 +389,7 @@ export default function LoginScreen() {
             keyboardType="email-address"
             autoCapitalize="none"
             autoComplete="email"
+            onFocus={keepFocusedInputVisible}
           />
         </>
       );
@@ -296,6 +406,7 @@ export default function LoginScreen() {
             placeholder="+234 800 000 0000"
             keyboardType="phone-pad"
             autoComplete="tel"
+            onFocus={keepFocusedInputVisible}
           />
           <AuthInput
             label="Pickup address"
@@ -304,6 +415,7 @@ export default function LoginScreen() {
             onChangeText={setAddress}
             placeholder="12 Kudirat Abiola Way"
             autoComplete="street-address"
+            onFocus={keepFocusedInputVisible}
           />
           <View style={styles.infoPill}>
             <Ionicons
@@ -329,6 +441,7 @@ export default function LoginScreen() {
           placeholder="At least 6 characters"
           autoCapitalize="none"
           secureTextEntry={!showPassword}
+          onFocus={keepFocusedInputVisible}
           trailing={
             <SoftPressable
               onPress={() => setShowPassword((visible) => !visible)}
@@ -357,17 +470,14 @@ export default function LoginScreen() {
           autoComplete="new-password"
           textContentType="newPassword"
           secureTextEntry={!showConfirmPassword}
+          onFocus={keepFocusedInputVisible}
           trailing={
             <SoftPressable
-              onPress={() =>
-                setShowConfirmPassword((visible) => !visible)
-              }
+              onPress={() => setShowConfirmPassword((visible) => !visible)}
               style={styles.eyeButton}
             >
               <Ionicons
-                name={
-                  showConfirmPassword ? "eye-off-outline" : "eye-outline"
-                }
+                name={showConfirmPassword ? "eye-off-outline" : "eye-outline"}
                 size={19}
                 color="#776B91"
               />
@@ -398,10 +508,13 @@ export default function LoginScreen() {
       <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
         <KeyboardAvoidingView
           style={styles.keyboardView}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
         >
           <ScrollView
+            ref={authScrollRef}
             contentContainerStyle={styles.scrollContent}
+            automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
+            keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
@@ -411,12 +524,7 @@ export default function LoginScreen() {
                 transform: [{ translateY: screenRise }],
               }}
             >
-              <View
-                style={[
-                  styles.visual,
-                  { height: screenHeight / 3 },
-                ]}
-              >
+              <View style={[styles.visual, { height: screenHeight / 3 }]}>
                 <Image
                   source={require("@/assets/images/login image.webp")}
                   style={styles.heroImage}
@@ -435,7 +543,9 @@ export default function LoginScreen() {
                   />
                   <View>
                     <Text style={styles.brandName}>DR LAUNDRY</Text>
-                    <Text style={styles.brandPromise}>Fast · Fresh · Clean</Text>
+                    <Text style={styles.brandPromise}>
+                      Fast · Fresh · Clean
+                    </Text>
                   </View>
                 </View>
                 <View style={styles.visualCopy}>
@@ -443,7 +553,7 @@ export default function LoginScreen() {
                     Laundry day,{"\n"}beautifully handled.
                   </Text>
                   <Text style={styles.visualSubtitle}>
-                    Doorstep pickup. Expert care. Fresh clothes returned.
+                  Flexible Doorstep Service. Expert care. Fresh clothes returned.
                   </Text>
                 </View>
               </View>
@@ -474,6 +584,7 @@ export default function LoginScreen() {
                         keyboardType="email-address"
                         autoCapitalize="none"
                         autoComplete="email"
+                        onFocus={keepFocusedInputVisible}
                       />
                       <AuthInput
                         label="Password"
@@ -483,6 +594,7 @@ export default function LoginScreen() {
                         placeholder="Enter your password"
                         autoCapitalize="none"
                         secureTextEntry={!showPassword}
+                        onFocus={keepFocusedInputVisible}
                         trailing={
                           <SoftPressable
                             onPress={() =>
@@ -492,9 +604,7 @@ export default function LoginScreen() {
                           >
                             <Ionicons
                               name={
-                                showPassword
-                                  ? "eye-off-outline"
-                                  : "eye-outline"
+                                showPassword ? "eye-off-outline" : "eye-outline"
                               }
                               size={19}
                               color="#776B91"
@@ -538,7 +648,9 @@ export default function LoginScreen() {
                       <Text style={styles.subtitle}>
                         {REGISTER_STEPS[registerStep].copy}
                       </Text>
-                      <View style={styles.fields}>{renderRegisterFields()}</View>
+                      <View style={styles.fields}>
+                        {renderRegisterFields()}
+                      </View>
                     </Animated.View>
                   </>
                 )}
@@ -560,6 +672,7 @@ export default function LoginScreen() {
                   ) : null}
                   <SoftPressable
                     onPress={handlePrimaryAction}
+                    disabled={isSubmitting}
                     style={[
                       styles.primaryButton,
                       authMode === "create" &&
@@ -597,9 +710,7 @@ export default function LoginScreen() {
                   </Text>
                   <SoftPressable
                     onPress={() =>
-                      changeMode(
-                        authMode === "signIn" ? "create" : "signIn",
-                      )
+                      changeMode(authMode === "signIn" ? "create" : "signIn")
                     }
                   >
                     <Text style={styles.switchLink}>
