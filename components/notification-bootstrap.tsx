@@ -8,6 +8,7 @@ const ALLOWED_ROUTES = new Set([
   "/notifications",
   "/track-order",
   "/order-history",
+  "/confirm-delivery",
   "/home",
 ]);
 
@@ -16,8 +17,8 @@ function openNotification(data: Record<string, unknown>) {
   const route = typeof data.route === "string" && ALLOWED_ROUTES.has(data.route)
     ? data.route
     : "/notifications";
-  if (orderId && route === "/track-order") {
-    router.push({ pathname: "/track-order", params: { orderId } });
+  if (orderId && (route === "/track-order" || route === "/confirm-delivery")) {
+    router.push({ pathname: route, params: { orderId } } as never);
   } else {
     router.push(route as never);
   }

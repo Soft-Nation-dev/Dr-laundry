@@ -49,6 +49,13 @@ type OrderRow = {
   payment_marked_by: string | null;
   payment_marked_by_role: string | null;
   payment_marked_at: string | null;
+  shared_pickup_order_id: string | null;
+  delivery_confirmation_status: "not_required" | "pending" | "confirmed" | null;
+  delivery_address: string | null;
+  delivery_address_place_id: string | null;
+  delivery_latitude: number | null;
+  delivery_longitude: number | null;
+  delivery_confirmed_at: string | null;
   order_items?: {
     item_id: string;
     name: string;
@@ -117,6 +124,13 @@ function mapOrderRow(row: OrderRow): OrderRecord {
     paymentMarkedBy: row.payment_marked_by ?? undefined,
     paymentMarkedByRole: row.payment_marked_by_role ?? undefined,
     paymentMarkedAt: row.payment_marked_at ?? undefined,
+    sharedPickupOrderId: row.shared_pickup_order_id ?? undefined,
+    deliveryConfirmationStatus: row.delivery_confirmation_status ?? undefined,
+    deliveryAddress: row.delivery_address ?? undefined,
+    deliveryAddressPlaceId: row.delivery_address_place_id ?? undefined,
+    deliveryLatitude: row.delivery_latitude ?? undefined,
+    deliveryLongitude: row.delivery_longitude ?? undefined,
+    deliveryConfirmedAt: row.delivery_confirmed_at ?? undefined,
   };
 }
 
@@ -130,6 +144,7 @@ export async function getOrders(): Promise<OrderRecord[]> {
     .from("orders")
     .select("*, order_items(item_id,name,unit_price,quantity,category,mode)")
     .eq("user_id", user.id)
+    .is("archived_at", null)
     .in("payment_status", ["paid", "unpaid"])
     .order("created_at", { ascending: false });
 
@@ -155,9 +170,11 @@ export async function getOrderById(orderId: string): Promise<OrderRecord | null>
       .select("*, order_items(item_id,name,unit_price,quantity,category,mode)")
       .eq("id", orderId)
       .eq("user_id", user.id)
+      .is("archived_at", null)
       .in("payment_status", ["paid", "unpaid"])
       .maybeSingle();
     if (!error && data) return mapOrderRow(data as OrderRow);
+    if (!error) return null;
   }
 
   const cached = await readCachedOrders();

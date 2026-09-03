@@ -77,7 +77,7 @@ export default function PickupDatesScreen() {
           <View style={styles.centerState}>
             <Text style={styles.centerTitle}>No upcoming pickups</Text>
             <Text style={styles.centerText}>
-              Standard pickup windows are 10am to 12pm and 3pm to 5pm.
+              Standard pickup windows are 8am to 10am and 5pm to 7pm.
             </Text>
             <SoftPressable
               onPress={() => router.replace("/new-order")}

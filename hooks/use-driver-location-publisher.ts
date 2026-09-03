@@ -23,24 +23,36 @@ export function useDriverLocationPublisher(orderId?: string, enabled = false) {
       }
       setSharing(true);
       const permission = await Location.getForegroundPermissionsAsync();
-      if (permission.status !== Location.PermissionStatus.GRANTED) return;
-      subscription = await Location.watchPositionAsync(
-        {
-          accuracy: Location.Accuracy.High,
-          timeInterval: 5_000,
-          distanceInterval: 10,
-        },
-        (location) => {
-          if (!mounted) return;
-          setPoint({
-            latitude: location.coords.latitude,
-            longitude: location.coords.longitude,
-          });
-          void publishExpoLocation(orderId, location).then((result) => {
-            if (mounted && !result.success) setError(result.message);
-          });
-        },
-      );
+      if (permission.status !== Location.PermissionStatus.GRANTED) {
+        setSharing(false);
+        setError("Precise location permission is no longer available. Restart the journey and allow location access.");
+        return;
+      }
+      try {
+        subscription = await Location.watchPositionAsync(
+          {
+            accuracy: Location.Accuracy.High,
+            timeInterval: 5_000,
+            distanceInterval: 10,
+          },
+          (location) => {
+            if (!mounted) return;
+            setPoint({
+              latitude: location.coords.latitude,
+              longitude: location.coords.longitude,
+            });
+            void publishExpoLocation(orderId, location).then((result) => {
+              if (!mounted) return;
+              setError(result.success ? "" : result.message);
+            });
+          },
+        );
+      } catch {
+        if (mounted) {
+          setSharing(false);
+          setError("Live GPS updates could not start. Turn on Location/GPS and retry the journey.");
+        }
+      }
     };
 
     void connect();

@@ -15,6 +15,10 @@ export type ResolvedPickupAddress = {
   longitude: number;
 };
 
+type AddressRequestOptions = {
+  auth?: boolean;
+};
+
 export type PickupAvailabilityDay = {
   day: PickupDayCode;
   windows: Exclude<PickupWindowCode, "asap">[];
@@ -27,8 +31,8 @@ export function getLocalPickupAvailability(now = new Date()): PickupAvailability
   const minuteOfDay = lagosNow.getUTCHours() * 60 + lagosNow.getUTCMinutes();
   const todayWindows: PickupAvailabilityDay["windows"] = [];
 
-  if (minuteOfDay < 12 * 60) todayWindows.push("morning");
-  if (minuteOfDay < 17 * 60) todayWindows.push("afternoon");
+  if (minuteOfDay < 10 * 60) todayWindows.push("morning");
+  if (minuteOfDay < 19 * 60) todayWindows.push("afternoon");
 
   const futureWindows: PickupAvailabilityDay["windows"] = ["morning", "afternoon"];
   return [
@@ -38,11 +42,15 @@ export function getLocalPickupAvailability(now = new Date()): PickupAvailability
   ];
 }
 
-export async function searchPickupAddresses(query: string, sessionToken: string) {
+export async function searchPickupAddresses(
+  query: string,
+  sessionToken: string,
+  options: AddressRequestOptions = {},
+) {
   const params = new URLSearchParams({ query, sessionToken });
   const response = await apiRequest<AddressSuggestion[]>(
     `/api/addresses/suggestions?${params.toString()}`,
-    { auth: true },
+    { auth: options.auth ?? true },
   );
   if (!response.success || !Array.isArray(response.data)) {
     throw new Error(response.message || "Could not load address suggestions");
@@ -54,14 +62,37 @@ export async function resolvePickupAddress(input: {
   placeId?: string;
   address?: string;
   sessionToken?: string;
-}) {
+}, options: AddressRequestOptions = {}) {
   const response = await apiRequest<ResolvedPickupAddress>("/api/addresses/resolve", {
     method: "POST",
-    auth: true,
+    auth: options.auth ?? true,
     body: input,
   });
   if (!response.success || !response.data) {
     throw new Error(response.message || "Could not confirm this pickup address");
+  }
+  return response.data;
+}
+
+export async function reversePickupAddress(
+  input: {
+    latitude: number;
+    longitude: number;
+    addressHint?: string;
+    sessionToken?: string;
+  },
+  options: AddressRequestOptions = {},
+) {
+  const response = await apiRequest<ResolvedPickupAddress>(
+    "/api/addresses/reverse",
+    {
+      method: "POST",
+      auth: options.auth ?? true,
+      body: input,
+    },
+  );
+  if (!response.success || !response.data) {
+    throw new Error(response.message || "Could not identify this pickup address");
   }
   return response.data;
 }

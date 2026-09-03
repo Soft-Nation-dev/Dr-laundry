@@ -9,6 +9,9 @@ export type RegisterInput = {
   phoneNumber: string;
   name: string;
   address: string;
+  addressPlaceId: string;
+  latitude: number;
+  longitude: number;
 };
 
 export type RegisterResult = {
@@ -26,8 +29,6 @@ export type ForgotPasswordInput = {
 };
 
 export type ResetPasswordInput = {
-  email: string;
-  token: string;
   newPassword: string;
 };
 
@@ -82,6 +83,9 @@ export async function register(
           phoneNumber: data.phoneNumber,
           phone_number: data.phoneNumber,
           address: data.address,
+          address_place_id: data.addressPlaceId,
+          latitude: data.latitude,
+          longitude: data.longitude,
         },
       },
     });
@@ -148,6 +152,11 @@ export async function syncCurrentUserProfile(): Promise<void> {
         name: metadata.name ?? "",
         phone_number: phoneNumber,
         address: metadata.address ?? "",
+        address_place_id: metadata.address_place_id ?? null,
+        latitude:
+          typeof metadata.latitude === "number" ? metadata.latitude : null,
+        longitude:
+          typeof metadata.longitude === "number" ? metadata.longitude : null,
         updated_at: new Date().toISOString(),
       },
       { count: "exact" },
@@ -160,6 +169,11 @@ export async function syncCurrentUserProfile(): Promise<void> {
       name: metadata.name ?? "",
       phone_number: phoneNumber,
       address: metadata.address ?? "",
+      address_place_id: metadata.address_place_id ?? null,
+      latitude:
+        typeof metadata.latitude === "number" ? metadata.latitude : null,
+      longitude:
+        typeof metadata.longitude === "number" ? metadata.longitude : null,
       role: "customer",
     });
   }
@@ -219,7 +233,12 @@ export async function forgotPassword(
   data: ForgotPasswordInput,
 ): Promise<ApiResponse<string>> {
   try {
-    const { error } = await supabase.auth.resetPasswordForEmail(data.email);
+    const redirectTo = Linking.createURL("auth/callback", {
+      queryParams: { next: "reset-password" },
+    });
+    const { error } = await supabase.auth.resetPasswordForEmail(data.email, {
+      redirectTo,
+    });
     if (error) {
       return {
         success: false,
@@ -227,7 +246,12 @@ export async function forgotPassword(
         data: "",
       };
     }
-    return { success: true, message: "Reset code sent", data: "" };
+    return {
+      success: true,
+      message:
+        "If an account exists for this email, a secure password reset link is on its way.",
+      data: "",
+    };
   } catch (err: any) {
     return {
       success: false,
@@ -241,16 +265,6 @@ export async function resetPassword(
   data: ResetPasswordInput,
 ): Promise<ApiResponse<string>> {
   try {
-    const { error: verifyError } = await supabase.auth.verifyOtp({
-      email: data.email,
-      token: data.token,
-      type: "recovery",
-    });
-
-    if (verifyError) {
-      return { success: false, message: verifyError.message, data: "" };
-    }
-
     const { error: updateError } = await supabase.auth.updateUser({
       password: data.newPassword,
     });

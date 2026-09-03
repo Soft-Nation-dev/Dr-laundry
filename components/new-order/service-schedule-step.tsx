@@ -200,7 +200,7 @@ export function ServiceScheduleStep({
             ) : null}
           </View>
 
-          {suggestionsVisible && !addressConfirmed && !addressError && address.trim().length >= 2 && (
+          {suggestionsVisible && !addressConfirmed && address.trim().length >= 2 && (
             <View style={styles.suggestionsList}>
               <ScrollView
                 style={{ maxHeight: 180 }}
@@ -226,9 +226,9 @@ export function ServiceScheduleStep({
                       </View>
                     </SoftPressable>
                   ))
-                ) : (
+                ) : !addressError ? (
                   <Text style={styles.addressEmpty}>No nearby match yet. Add a street, landmark, or area.</Text>
-                )}
+                ) : null}
                 <Text style={styles.googleAttribution}>Powered by Google</Text>
               </ScrollView>
             </View>

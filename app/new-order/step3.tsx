@@ -20,7 +20,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 /* ---------- CONSTANTS ---------- */
 
-const QUICK_ITEMS = ["tshirt", "trouser", "polo", "bedsheet", "gown"];
+const QUICK_ITEMS = ["long-sleeved-shirt", "trouser", "polo", "bedsheet", "gown"];
 
 const MODE_SHORT_LABELS: Record<LaundryMode, string> = {
   "wash-iron": "Wash + Iron",

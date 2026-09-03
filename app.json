@@ -4,7 +4,7 @@
     "slug": "dr-laundry",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/logo.jpeg",
+    "icon": "./store-listing/dr-laundry-play-icon-512.png",
     "scheme": "drlaundry",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -13,6 +13,12 @@
     },
     "android": {
       "googleServicesFile": "./google-services.json",
+      "blockedPermissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#3B5BDB",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -44,7 +50,9 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow Dr Laundry to choose a profile photo."
+          "photosPermission": "Allow Dr Laundry to choose a profile photo.",
+          "cameraPermission": false,
+          "microphonePermission": false
         }
       ],
       [
@@ -58,8 +66,8 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Allow Dr Laundry to use your location while you complete an assigned pickup or delivery.",
-          "locationAlwaysAndWhenInUsePermission": "Allow Dr Laundry drivers to share their location during an active customer journey, including while the app is in the background.",
+          "locationWhenInUsePermission": "Allow Dr Laundry to use your precise location to confirm a pickup address or complete an assigned pickup or delivery.",
+          "locationAlwaysAndWhenInUsePermission": "Allow Dr Laundry to share your precise location for an active pickup or delivery journey, even when the app is closed or not in use.",
           "isAndroidBackgroundLocationEnabled": true,
           "isAndroidForegroundServiceEnabled": true,
           "isIosBackgroundLocationEnabled": true

@@ -55,8 +55,8 @@ export const PICKUP_WINDOW_OPTIONS: Array<{
   startHour: number;
   endHour: number;
 }> = [
-  { code: "morning", label: "10am to 12pm", startHour: 10, endHour: 12 },
-  { code: "afternoon", label: "3pm to 5pm", startHour: 15, endHour: 17 },
+  { code: "morning", label: "8am to 10am", startHour: 8, endHour: 10 },
+  { code: "afternoon", label: "5pm to 7pm", startHour: 17, endHour: 19 },
   { code: "asap", label: "Immediate pickup", startHour: 0, endHour: 0 },
 ];
 

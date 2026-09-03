@@ -250,6 +250,12 @@ export default function PaymentHistoryScreen() {
                   </View>
                   <Text numberOfLines={1} adjustsFontSizeToFit style={styles.amount}>{formatNaira(payment.amount)}</Text>
                 </View>
+                {payment.sharedPickupOrderId ? (
+                  <View style={styles.sharedPickupRow}>
+                    <Ionicons name="git-merge-outline" size={15} color="#087A58" />
+                    <Text style={styles.sharedPickupText}>Bundled with #{payment.sharedPickupOrderId} · saved {formatNaira(payment.sharedPickupDiscount)}</Text>
+                  </View>
+                ) : null}
                 <View style={styles.referenceRow}>
                   <Text style={styles.referenceLabel}>Reference</Text>
                   <Text numberOfLines={1} style={styles.reference}>{payment.reference}</Text>
@@ -348,6 +354,8 @@ const styles = StyleSheet.create({
   emptyTitle: { marginTop: 12, color: LaundryTheme.colors.ink, fontSize: 17, fontWeight: "900" },
   emptyBody: { marginTop: 5, color: LaundryTheme.colors.muted, fontSize: 13, lineHeight: 19, textAlign: "center" },
   paymentCard: { marginTop: 13, padding: 16, borderRadius: 22, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "rgba(226,214,244,0.8)", ...LaundryTheme.shadow.soft },
+  sharedPickupRow: { marginTop: 11, borderRadius: 13, paddingHorizontal: 10, paddingVertical: 8, flexDirection: "row", alignItems: "center", gap: 7, backgroundColor: "#ECFBF5" },
+  sharedPickupText: { flex: 1, color: "#087A58", fontSize: 9.5, fontWeight: "800" },
   paymentTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
   statusBadge: { flexDirection: "row", alignItems: "center", gap: 5, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 6 },
   statusText: { fontSize: 10, fontWeight: "900" },

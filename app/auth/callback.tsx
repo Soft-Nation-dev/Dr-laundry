@@ -7,6 +7,7 @@ import {
   withTimeout,
 } from "@/lib/promise-timeout";
 import { getLandingRoute } from "@/lib/role-routing";
+import { savePasswordRecoveryState } from "@/lib/password-recovery-state";
 import { supabase } from "@/lib/supabase-client";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
@@ -17,12 +18,29 @@ import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 function readAuthParams(url: string) {
-  const normalized = url.replace("#", "?");
-  return new URLSearchParams(normalized.split("?")[1] ?? "");
+  const queryStart = url.indexOf("?");
+  const fragmentStart = url.indexOf("#");
+  const query =
+    queryStart >= 0
+      ? url.slice(
+          queryStart + 1,
+          fragmentStart > queryStart ? fragmentStart : undefined,
+        )
+      : "";
+  const fragment = fragmentStart >= 0 ? url.slice(fragmentStart + 1) : "";
+  const params = new URLSearchParams(query);
+  const fragmentParams = new URLSearchParams(fragment);
+  fragmentParams.forEach((value, key) => {
+    if (!params.has(key)) params.set(key, value);
+  });
+  return params;
 }
 
 export default function AuthCallbackScreen() {
   const [errorMessage, setErrorMessage] = useState("");
+  const [callbackKind, setCallbackKind] = useState<"confirmation" | "recovery">(
+    "confirmation",
+  );
   const isProcessingLink = useRef(false);
 
   useEffect(() => {
@@ -44,6 +62,8 @@ export default function AuthCallbackScreen() {
         const accessToken = params.get("access_token");
         const refreshToken = params.get("refresh_token");
         const errorDescription = params.get("error_description");
+        const isRecovery = params.get("next") === "reset-password";
+        setCallbackKind(isRecovery ? "recovery" : "confirmation");
 
         if (errorDescription) {
           if (active) setErrorMessage(errorDescription.replace(/\+/g, " "));
@@ -51,7 +71,7 @@ export default function AuthCallbackScreen() {
           return;
         }
 
-        const landingRoute = await withTimeout(
+        const destination = await withTimeout(
           (async () => {
             const result = code
               ? await supabase.auth.exchangeCodeForSession(code)
@@ -68,6 +88,17 @@ export default function AuthCallbackScreen() {
 
             if (result.error) throw result.error;
 
+            if (isRecovery) {
+              const {
+                data: { session },
+              } = await supabase.auth.getSession();
+              if (!session?.user?.id) {
+                throw new Error("The password recovery session is incomplete.");
+              }
+              await savePasswordRecoveryState(session.user.id);
+              return "/reset-password";
+            }
+
             await clearPendingEmailVerification();
             await syncCurrentUserProfile();
             const profile = await getProfile();
@@ -77,7 +108,7 @@ export default function AuthCallbackScreen() {
           "Email confirmation timed out.",
         );
 
-        if (active) router.replace(landingRoute as never);
+        if (active) router.replace(destination as never);
       } catch (error) {
         isProcessingLink.current = false;
         if (active) {
@@ -118,14 +149,32 @@ export default function AuthCallbackScreen() {
         )}
       </View>
       <Text style={styles.title}>
-        {errorMessage ? "Link could not be confirmed" : "Confirming your account"}
+        {errorMessage
+          ? callbackKind === "recovery"
+            ? "Reset link could not be opened"
+            : "Link could not be confirmed"
+          : callbackKind === "recovery"
+            ? "Opening password reset"
+            : "Confirming your account"}
       </Text>
       <Text style={styles.message}>
-        {errorMessage || "Hold on while we securely sign you in."}
+        {errorMessage ||
+          (callbackKind === "recovery"
+            ? "Hold on while we validate your secure recovery link."
+            : "Hold on while we securely sign you in.")}
       </Text>
       {errorMessage ? (
-        <Text style={styles.link} onPress={() => router.replace("/")}>
-          Return to verification
+        <Text
+          style={styles.link}
+          onPress={() =>
+            router.replace(
+              callbackKind === "recovery" ? "/forgot-password" : "/login",
+            )
+          }
+        >
+          {callbackKind === "recovery"
+            ? "Request a new reset link"
+            : "Return to sign in"}
         </Text>
       ) : (
         <ActivityIndicator color={LaundryTheme.colors.primary} style={styles.loader} />

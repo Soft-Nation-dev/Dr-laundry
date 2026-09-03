@@ -20,6 +20,7 @@ import {
   ActivityIndicator,
   Animated,
   Easing,
+  Linking,
   Modal,
   Pressable,
   ScrollView,
@@ -29,6 +30,9 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+const PRIVACY_POLICY_URL = "https://help.drlaundry.com.ng/privacy/";
+const ACCOUNT_DELETION_URL = "https://help.drlaundry.com.ng/delete-account/";
 
 type SettingsRowProps = {
   icon: keyof typeof Ionicons.glyphMap;
@@ -88,6 +92,7 @@ export default function SettingsScreen() {
   const heroIn = useRef(new Animated.Value(0)).current;
   const sheetIn = useRef(new Animated.Value(0)).current;
   const sectionIns = useRef([
+    new Animated.Value(0),
     new Animated.Value(0),
     new Animated.Value(0),
     new Animated.Value(0),
@@ -238,6 +243,18 @@ export default function SettingsScreen() {
       setSigningOut(false);
     }
   };
+
+  const openLegalPage = useCallback(async (url: string, label: string) => {
+    try {
+      await Linking.openURL(url);
+    } catch {
+      setNotice({
+        title: `${label} unavailable`,
+        message: "Check your internet connection and try again.",
+        tone: "error",
+      });
+    }
+  }, []);
 
   const animatedSection = (index: number) => ({
     opacity: sectionIns[index],
@@ -410,15 +427,13 @@ export default function SettingsScreen() {
             <Animated.View style={animatedSection(0)}>
               <Text style={styles.sectionLabel}>WORKSPACE ACCESS</Text>
               <View style={styles.groupCard}>
-                {profile.role === "superadmin" ? <>
-                  <SettingsRow icon="grid-outline" label="Superadmin panel" detail="App access, operations and account roles" onPress={() => router.push("/admin" as never)} />
-                  <View style={styles.divider} />
-                </> : null}
                 {canViewAdminOrders(profile.role) ? <>
-                  <SettingsRow icon="receipt-outline" label="Available orders" detail="Track every customer order from the backend" onPress={() => router.push("/admin/orders" as never)} />
+                  <SettingsRow icon="grid-outline" label="Operations dashboard" detail="Orders, driver tools and account settings" onPress={() => router.push("/admin" as never)} />
                   <View style={styles.divider} />
                 </> : null}
                 {canManageRoles(profile.role) ? <>
+                  <SettingsRow icon="receipt-outline" label="Available orders" detail="Track every customer order from the backend" onPress={() => router.push("/admin/orders" as never)} />
+                  <View style={styles.divider} />
                   <SettingsRow icon="people-outline" label="Manage app roles" detail="Assign customer, driver and admin access" onPress={() => router.push("/admin/users" as never)} />
                   <View style={styles.divider} />
                 </> : null}
@@ -468,6 +483,27 @@ export default function SettingsScreen() {
           </Animated.View> : null}
 
           <Animated.View style={animatedSection(2)}>
+            <Text style={styles.sectionLabel}>PRIVACY &amp; DATA</Text>
+            <View style={styles.groupCard}>
+              <SettingsRow
+                icon="shield-checkmark-outline"
+                label="Privacy policy"
+                detail="How Dr Laundry collects, uses and protects data"
+                onPress={() => void openLegalPage(PRIVACY_POLICY_URL, "Privacy policy")}
+              />
+              <View style={styles.divider} />
+              <SettingsRow
+                icon="person-remove-outline"
+                iconColor={LaundryTheme.colors.danger}
+                iconBackground="#FFF0F2"
+                label="Delete account and data"
+                detail="Start a verified account deletion request"
+                onPress={() => void openLegalPage(ACCOUNT_DELETION_URL, "Account deletion")}
+              />
+            </View>
+          </Animated.View>
+
+          <Animated.View style={animatedSection(3)}>
             <Text style={styles.sectionLabel}>SESSION</Text>
             <View style={styles.groupCard}>
               <SettingsRow

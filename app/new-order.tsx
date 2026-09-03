@@ -23,6 +23,7 @@ import {
 import { calculateTotals, formatNaira, getTurnaroundHours } from "@/lib/pricing";
 import { getDraft } from "@/lib/order-draft";
 import { getProfile } from "@/lib/profile-api";
+import { OperationTimeoutError, withTimeout } from "@/lib/promise-timeout";
 import {
   AddressSuggestion,
   getLocalPickupAvailability,
@@ -136,6 +137,8 @@ export default function NewOrderScreen() {
   const [addressAttentionKey, setAddressAttentionKey] = useState(0);
   const [toast, setToast] = useState<AppToastMessage | null>(null);
   const addressSessionToken = useRef(createAddressSessionToken());
+  const addressSearchCache = useRef(new Map<string, AddressSuggestion[]>());
+  const addressSearchSequence = useRef(0);
   const [pickupDay, setPickupDay] = useState<PickupDayCode>("today");
   const [pickupWindow, setPickupWindow] = useState<PickupWindowCode>("morning");
   const [pickupAvailability, setPickupAvailability] = useState<PickupAvailabilityDay[]>(
@@ -197,14 +200,33 @@ export default function NewOrderScreen() {
         typeof existing.latitude === "number" &&
         typeof existing.longitude === "number",
       );
-      if (initialAddress && !hasResolvedDraftAddress) {
+      const hasResolvedProfileAddress = Boolean(
+        !existing?.address &&
+        profileResponse.data?.addressPlaceId &&
+        typeof profileResponse.data?.latitude === "number" &&
+        typeof profileResponse.data?.longitude === "number",
+      );
+      if (hasResolvedProfileAddress) {
+        setAddress(profileResponse.data.address.trim());
+        setAddressPlaceId(profileResponse.data.addressPlaceId!);
+        setAddressPoint({
+          latitude: profileResponse.data.latitude!,
+          longitude: profileResponse.data.longitude!,
+        });
+      }
+      if (
+        initialAddress &&
+        !hasResolvedDraftAddress &&
+        !hasResolvedProfileAddress
+      ) {
         setAddress(initialAddress);
         setAddressResolving(true);
         try {
-          const resolved = await resolvePickupAddress({
-            address: initialAddress,
-            sessionToken: addressSessionToken.current,
-          });
+          const resolved = await withTimeout(
+            resolvePickupAddress({ address: initialAddress, sessionToken: addressSessionToken.current }),
+            10_000,
+            "Address confirmation took too long.",
+          );
           if (!active) return;
           setAddress(resolved.address);
           setAddressPlaceId(resolved.placeId);
@@ -227,24 +249,40 @@ export default function NewOrderScreen() {
       return;
     }
     let active = true;
+    const sequence = ++addressSearchSequence.current;
     const timer = setTimeout(async () => {
+      const normalizedQuery = address.trim().toLocaleLowerCase();
+      const cached = addressSearchCache.current.get(normalizedQuery);
+      if (cached) {
+        if (active && sequence === addressSearchSequence.current) {
+          setAddressSuggestions(cached);
+          setAddressSearching(false);
+        }
+        return;
+      }
       setAddressSearching(true);
       setAddressError("");
       try {
-        const suggestions = await searchPickupAddresses(
-          address.trim(),
-          addressSessionToken.current,
+        const suggestions = await withTimeout(
+          searchPickupAddresses(address.trim(), addressSessionToken.current),
+          8_000,
+          "Address search is taking longer than expected.",
         );
-        if (active) setAddressSuggestions(suggestions);
+        addressSearchCache.current.set(normalizedQuery, suggestions);
+        if (active && sequence === addressSearchSequence.current) setAddressSuggestions(suggestions);
       } catch (error) {
-        if (active) {
+        if (active && sequence === addressSearchSequence.current) {
           setAddressSuggestions([]);
-          setAddressError(error instanceof Error ? error.message : "Could not search addresses");
+          setAddressError(
+            error instanceof OperationTimeoutError
+              ? "The address service is slow right now. Keep typing or try the search again."
+              : error instanceof Error ? error.message : "Could not search addresses",
+          );
         }
       } finally {
-        if (active) setAddressSearching(false);
+        if (active && sequence === addressSearchSequence.current) setAddressSearching(false);
       }
-    }, 350);
+    }, 250);
     return () => {
       active = false;
       clearTimeout(timer);
@@ -296,10 +334,11 @@ export default function NewOrderScreen() {
     setAddressResolving(true);
     setAddressError("");
     try {
-      const resolved = await resolvePickupAddress({
-        placeId: suggestion.id,
-        sessionToken: addressSessionToken.current,
-      });
+      const resolved = await withTimeout(
+        resolvePickupAddress({ placeId: suggestion.id, sessionToken: addressSessionToken.current }),
+        10_000,
+        "This address took too long to confirm. Please choose it again.",
+      );
       setAddress(resolved.address);
       setAddressPlaceId(resolved.placeId);
       setAddressPoint({ latitude: resolved.latitude, longitude: resolved.longitude });
@@ -422,10 +461,11 @@ export default function NewOrderScreen() {
       setAddressResolving(true);
       setAddressError("");
       try {
-        const resolved = await resolvePickupAddress({
-          address: address.trim(),
-          sessionToken: addressSessionToken.current,
-        });
+        const resolved = await withTimeout(
+          resolvePickupAddress({ address: address.trim(), sessionToken: addressSessionToken.current }),
+          10_000,
+          "Address confirmation took too long. Choose one of the suggestions and retry.",
+        );
         resolvedPoint = { latitude: resolved.latitude, longitude: resolved.longitude };
         resolvedPlaceId = resolved.placeId;
         setAddress(resolved.address);

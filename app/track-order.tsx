@@ -1,11 +1,12 @@
 import { LiveOrderMap } from "@/components/live-order-map";
+import { SoftPressable } from "@/components/soft-pressable";
 import { LaundryTheme } from "@/constants/laundry-theme";
 import { getOrderById } from "@/lib/order-storage";
 import { formatDateTime, getOrderStatusLabel, hoursUntil } from "@/lib/pricing";
 import { OrderRecord, OrderStatus } from "@/types/order";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
     ActivityIndicator,
@@ -30,10 +31,12 @@ function statusRank(status: OrderStatus): number {
       return 1;
     case "processing":
       return 2;
-    case "out-for-delivery":
+    case "ready-for-delivery":
       return 3;
-    case "delivered":
+    case "out-for-delivery":
       return 4;
+    case "delivered":
+      return 5;
     default:
       return 0;
   }
@@ -54,17 +57,22 @@ function timelineFor(order: OrderRecord): TimelineRow[] {
       done: rank >= 2,
     },
     {
-      title: "Out for delivery",
-      time: rank >= 3 ? "On route" : "Pending",
+      title: "Delivery confirmed",
+      time: order.deliveryConfirmedAt ? formatDateTime(order.deliveryConfirmedAt) : rank >= 3 ? "Choose a convenient slot" : "Pending",
       done: rank >= 3,
+    },
+    {
+      title: "Out for delivery",
+      time: rank >= 4 ? "On route" : "Pending",
+      done: rank >= 4,
     },
     {
       title: "Delivered",
       time:
-        rank >= 4 && order.actualDeliveryISO
+        rank >= 5 && order.actualDeliveryISO
           ? formatDateTime(order.actualDeliveryISO)
           : "Pending",
-      done: rank >= 4,
+      done: rank >= 5,
     },
   ];
 }
@@ -201,11 +209,24 @@ export default function TrackOrderScreen() {
                   <View
                     style={[
                       styles.bannerProgressFill,
-                      { width: `${statusRank(order.status) * 25}%` },
+                      { width: `${statusRank(order.status) * 20}%` },
                     ]}
                   />
                 </View>
               </Animated.View>
+
+              {order.status === "ready-for-delivery" && order.deliveryConfirmationStatus !== "confirmed" ? (
+                <SoftPressable
+                  onPress={() => router.push({ pathname: "/confirm-delivery", params: { orderId: order.id } } as never)}
+                  style={styles.deliveryAction}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.deliveryActionTitle}>Choose your delivery slot</Text>
+                    <Text style={styles.deliveryActionBody}>Confirm the date, time window and receiving address before dispatch.</Text>
+                  </View>
+                  <Ionicons name="calendar-outline" size={22} color="#FFFFFF" />
+                </SoftPressable>
+              ) : null}
 
               <Animated.View
                 style={[
@@ -364,6 +385,18 @@ const styles = StyleSheet.create({
     padding: 16,
     ...LaundryTheme.shadow.soft,
   },
+  deliveryAction: {
+    marginTop: 16,
+    borderRadius: 20,
+    padding: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: "#087A58",
+    ...LaundryTheme.shadow.soft,
+  },
+  deliveryActionTitle: { color: "#FFFFFF", fontSize: 15, fontWeight: "900" },
+  deliveryActionBody: { color: "#D8F5E9", fontSize: 11.5, lineHeight: 17, marginTop: 3 },
   section: {
     marginBottom: 12,
     color: LaundryTheme.colors.ink,

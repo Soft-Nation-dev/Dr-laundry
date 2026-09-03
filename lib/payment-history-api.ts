@@ -17,6 +17,9 @@ export type PaymentHistoryItem = {
   paymentMethod: "paystack" | "pay_on_delivery";
   markedByRole: string | null;
   markedAt: string | null;
+  pickupDeliveryFee: number;
+  sharedPickupDiscount: number;
+  sharedPickupOrderId: string | null;
 };
 
 type PaymentHistoryRow = {
@@ -34,6 +37,9 @@ type PaymentHistoryRow = {
   payment_method: "paystack" | "pay_on_delivery";
   payment_marked_by_role: string | null;
   payment_marked_at: string | null;
+  pickup_delivery_fee: number | string;
+  shared_pickup_discount: number | string;
+  shared_pickup_order_id: string | null;
 };
 
 export async function getPaymentHistory(): Promise<PaymentHistoryItem[]> {
@@ -56,6 +62,9 @@ export async function getPaymentHistory(): Promise<PaymentHistoryItem[]> {
     paymentMethod: row.payment_method || "paystack",
     markedByRole: row.payment_marked_by_role,
     markedAt: row.payment_marked_at,
+    pickupDeliveryFee: Number(row.pickup_delivery_fee || 0),
+    sharedPickupDiscount: Number(row.shared_pickup_discount || 0),
+    sharedPickupOrderId: row.shared_pickup_order_id,
   }));
 }
 

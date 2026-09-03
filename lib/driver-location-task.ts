@@ -70,6 +70,9 @@ export async function startDriverLocationSharing(orderId: string): Promise<{
   backgroundEnabled: boolean;
   location: Location.LocationObject;
 }> {
+  if (!(await Location.hasServicesEnabledAsync())) {
+    throw new Error("Turn on Location/GPS on this device, then try again.");
+  }
   const foreground = await Location.requestForegroundPermissionsAsync();
   if (foreground.status !== Location.PermissionStatus.GRANTED) {
     throw new Error("Precise location permission is required for live journeys.");
@@ -88,21 +91,28 @@ export async function startDriverLocationSharing(orderId: string): Promise<{
     backgroundEnabled = false;
   }
 
+  let location: Location.LocationObject;
+  try {
+    location = await Promise.race([
+      Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High }),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("GPS is taking too long to respond.")), 20_000)),
+    ]);
+  } catch (error) {
+    const recent = await Location.getLastKnownPositionAsync({ maxAge: 60_000, requiredAccuracy: 100 });
+    if (!recent) throw error;
+    location = recent;
+  }
+  const firstUpdate = await publishExpoLocation(orderId, location);
+  if (!firstUpdate.success) {
+    throw new Error(firstUpdate.message);
+  }
+
   const journey: ActiveJourney = {
     orderId,
     startedAt: new Date().toISOString(),
     backgroundEnabled,
   };
   await AsyncStorage.setItem(ACTIVE_JOURNEY_KEY, JSON.stringify(journey));
-
-  const location = await Location.getCurrentPositionAsync({
-    accuracy: Location.Accuracy.High,
-  });
-  const firstUpdate = await publishExpoLocation(orderId, location);
-  if (!firstUpdate.success) {
-    await AsyncStorage.removeItem(ACTIVE_JOURNEY_KEY);
-    throw new Error(firstUpdate.message);
-  }
 
   if (backgroundEnabled && !(await Location.hasStartedLocationUpdatesAsync(DRIVER_LOCATION_TASK))) {
     await Location.startLocationUpdatesAsync(DRIVER_LOCATION_TASK, {

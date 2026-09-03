@@ -22,7 +22,7 @@ export async function getProfile(): Promise<ApiResponse<Profile>> {
       .eq("id", user.id)
       .single();
 
-    if (error) {
+    if (error?.code === "PGRST116") {
       return {
         success: true,
         message: "Profile loaded from user metadata",
@@ -34,9 +34,27 @@ export async function getProfile(): Promise<ApiResponse<Profile>> {
             (user.user_metadata?.phoneNumber as string) ??
             "",
           address: (user.user_metadata?.address as string) ?? "",
+          addressPlaceId:
+            (user.user_metadata?.address_place_id as string) ?? "",
+          latitude:
+            typeof user.user_metadata?.latitude === "number"
+              ? user.user_metadata.latitude
+              : undefined,
+          longitude:
+            typeof user.user_metadata?.longitude === "number"
+              ? user.user_metadata.longitude
+              : undefined,
           avatarUrl: (user.user_metadata?.avatar_url as string) ?? "",
           role: "customer",
         },
+      };
+    }
+
+    if (error) {
+      return {
+        success: false,
+        message: error.message || "Your account access could not be loaded",
+        data: null as any,
       };
     }
 
@@ -48,6 +66,11 @@ export async function getProfile(): Promise<ApiResponse<Profile>> {
         name: profile.name ?? "",
         phoneNumber: profile.phone_number ?? "",
         address: profile.address ?? "",
+        addressPlaceId: profile.address_place_id ?? "",
+        latitude:
+          typeof profile.latitude === "number" ? profile.latitude : undefined,
+        longitude:
+          typeof profile.longitude === "number" ? profile.longitude : undefined,
         avatarUrl: profile.avatar_url ?? "",
         role: ["driver", "admin", "superadmin"].includes(profile.role)
           ? profile.role
@@ -99,6 +122,9 @@ export async function updateProfile(
         name: data.name,
         phone_number: data.phoneNumber,
         address: data.address,
+        address_place_id: null,
+        latitude: null,
+        longitude: null,
         updated_at: new Date().toISOString(),
       })
       .eq("id", user.id);
@@ -113,6 +139,9 @@ export async function updateProfile(
         phoneNumber: data.phoneNumber,
         phone_number: data.phoneNumber,
         address: data.address,
+        address_place_id: null,
+        latitude: null,
+        longitude: null,
       },
     });
 

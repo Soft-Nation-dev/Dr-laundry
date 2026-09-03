@@ -11,6 +11,7 @@ export type PaymentStatus = "pending" | "unpaid" | "paid" | "failed" | "expired"
 export type OrderStatus =
   | "pickup-confirmed"
   | "processing"
+  | "ready-for-delivery"
   | "out-for-delivery"
   | "delivered"
   | "cancelled";
@@ -49,6 +50,7 @@ export type PricingTotals = {
   expressPremium: number;
   expressDeliveryFee: number;
   expressTotal: number;
+  sharedPickupDiscount?: number;
 };
 
 export type OrderDraft = {
@@ -66,6 +68,7 @@ export type OrderDraft = {
   turnaroundHours: TurnaroundHours;
   lineItems: OrderLineItem[];
   totals: PricingTotals;
+  sharedPickupOrderId?: string;
 };
 
 export type OrderRecord = OrderDraft & {
@@ -83,6 +86,13 @@ export type OrderRecord = OrderDraft & {
   paymentMarkedBy?: string;
   paymentMarkedByRole?: string;
   paymentMarkedAt?: string;
+  sharedPickupOrderId?: string;
+  deliveryConfirmationStatus?: "not_required" | "pending" | "confirmed";
+  deliveryAddress?: string;
+  deliveryAddressPlaceId?: string;
+  deliveryLatitude?: number;
+  deliveryLongitude?: number;
+  deliveryConfirmedAt?: string;
   driverId?: string;
   driverTaskType?: DriverTaskType;
   driverTaskStatus?: DriverTaskStatus;

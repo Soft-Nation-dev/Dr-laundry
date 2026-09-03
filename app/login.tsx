@@ -9,9 +9,14 @@ import {
 import { saveAuthSession } from "@/lib/auth-storage";
 import {
   clearPendingEmailVerification,
-  getPendingEmailVerification,
   savePendingEmailVerification,
 } from "@/lib/pending-email-verification";
+import {
+  type AddressSuggestion,
+  resolvePickupAddress,
+  reversePickupAddress,
+  searchPickupAddresses,
+} from "@/lib/new-order-api";
 import { getProfile } from "@/lib/profile-api";
 import {
   OperationTimeoutError,
@@ -21,6 +26,7 @@ import { getLandingRoute } from "@/lib/role-routing";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
+import * as Location from "expo-location";
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -41,6 +47,32 @@ import { SafeAreaView } from "react-native-safe-area-context";
 type AuthMode = "signIn" | "create";
 type RegisterStep = 0 | 1 | 2;
 const AUTH_TIMEOUT_MS = 30_000;
+
+function createAddressSessionToken() {
+  return `signup-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+}
+
+function formatDeviceAddress(address: Location.LocationGeocodedAddress) {
+  const candidates = [
+    address.name,
+    address.street,
+    address.district,
+    address.subregion,
+    address.city,
+    address.region,
+    address.postalCode,
+    address.country,
+  ];
+  const seen = new Set<string>();
+  return candidates
+    .flatMap((value) => {
+      const normalized = value?.trim();
+      if (!normalized || seen.has(normalized.toLowerCase())) return [];
+      seen.add(normalized.toLowerCase());
+      return [normalized];
+    })
+    .join(", ");
+}
 
 async function getAuthenticatedLandingRoute() {
   const profile = await getProfile();
@@ -101,6 +133,18 @@ export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
+  const [addressPlaceId, setAddressPlaceId] = useState("");
+  const [addressPoint, setAddressPoint] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const [addressSuggestions, setAddressSuggestions] = useState<
+    AddressSuggestion[]
+  >([]);
+  const [suggestionsVisible, setSuggestionsVisible] = useState(false);
+  const [addressSearching, setAddressSearching] = useState(false);
+  const [addressResolving, setAddressResolving] = useState(false);
+  const [isUsingCurrentLocation, setIsUsingCurrentLocation] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -112,6 +156,7 @@ export default function LoginScreen() {
   const stepOpacity = useRef(new Animated.Value(1)).current;
   const stepSlide = useRef(new Animated.Value(0)).current;
   const authScrollRef = useRef<ScrollView>(null);
+  const addressSessionToken = useRef(createAddressSessionToken());
 
   const keepFocusedInputVisible = () => {
     setTimeout(
@@ -119,22 +164,6 @@ export default function LoginScreen() {
       Platform.OS === "android" ? 220 : 100,
     );
   };
-
-  useEffect(() => {
-    let active = true;
-
-    getPendingEmailVerification().then((pending) => {
-      if (!active || !pending) return;
-      router.replace({
-        pathname: "/verify-email",
-        params: { email: pending.email },
-      });
-    });
-
-    return () => {
-      active = false;
-    };
-  }, []);
 
   useEffect(() => {
     Animated.parallel([
@@ -151,6 +180,50 @@ export default function LoginScreen() {
       }),
     ]).start();
   }, [screenFade, screenRise]);
+
+  useEffect(() => {
+    if (
+      authMode !== "create" ||
+      registerStep !== 1 ||
+      !suggestionsVisible ||
+      address.trim().length < 2 ||
+      addressPlaceId
+    ) {
+      setAddressSuggestions([]);
+      setAddressSearching(false);
+      return;
+    }
+
+    let active = true;
+    const timer = setTimeout(async () => {
+      setAddressSearching(true);
+      try {
+        const suggestions = await searchPickupAddresses(
+          address.trim(),
+          addressSessionToken.current,
+          { auth: false },
+        );
+        if (active) setAddressSuggestions(suggestions);
+      } catch (error) {
+        if (active) {
+          setAddressSuggestions([]);
+          showNotice(
+            "Address search unavailable",
+            error instanceof Error
+              ? error.message
+              : "We could not search addresses. Please try again.",
+          );
+        }
+      } finally {
+        if (active) setAddressSearching(false);
+      }
+    }, 350);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [address, addressPlaceId, authMode, registerStep, suggestionsVisible]);
 
   const animateStep = (next: RegisterStep, direction: 1 | -1) => {
     Animated.parallel([
@@ -188,6 +261,158 @@ export default function LoginScreen() {
     setRegisterStep(0);
     stepOpacity.setValue(1);
     stepSlide.setValue(0);
+  };
+
+  const handleAddressChange = (value: string) => {
+    setAddress(value);
+    setAddressPlaceId("");
+    setAddressPoint(null);
+    setSuggestionsVisible(value.trim().length >= 2);
+  };
+
+  const handleSelectAddress = async (suggestion: AddressSuggestion) => {
+    setAddress(suggestion.label);
+    setSuggestionsVisible(false);
+    setAddressSuggestions([]);
+    setAddressResolving(true);
+    try {
+      const resolved = await withTimeout(
+        resolvePickupAddress(
+          {
+            placeId: suggestion.id,
+            sessionToken: addressSessionToken.current,
+          },
+          { auth: false },
+        ),
+        AUTH_TIMEOUT_MS,
+        "Address confirmation timed out.",
+      );
+      setAddress(resolved.address);
+      setAddressPlaceId(resolved.placeId);
+      setAddressPoint({
+        latitude: resolved.latitude,
+        longitude: resolved.longitude,
+      });
+      addressSessionToken.current = createAddressSessionToken();
+    } catch (error) {
+      setAddressPlaceId("");
+      setAddressPoint(null);
+      showNotice(
+        "Address not confirmed",
+        error instanceof Error
+          ? error.message
+          : "Choose another nearby address.",
+      );
+    } finally {
+      setAddressResolving(false);
+    }
+  };
+
+  const handleUseCurrentLocation = async () => {
+    if (isUsingCurrentLocation || addressResolving) return;
+
+    setIsUsingCurrentLocation(true);
+    try {
+      const permission = await Location.requestForegroundPermissionsAsync();
+      if (permission.status !== "granted") {
+        showNotice(
+          "Location permission needed",
+          "Allow location while using Dr Laundry, or enter and select your pickup address manually.",
+        );
+        return;
+      }
+
+      const position = await withTimeout(
+        Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.High,
+        }),
+        20_000,
+        "Finding your current location timed out.",
+      );
+      const geocoded = await Location.reverseGeocodeAsync({
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+      });
+      const addressHint = geocoded[0]
+        ? formatDeviceAddress(geocoded[0])
+        : undefined;
+      const resolved = await withTimeout(
+        reversePickupAddress(
+          {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            addressHint,
+            sessionToken: addressSessionToken.current,
+          },
+          { auth: false },
+        ),
+        AUTH_TIMEOUT_MS,
+        "Confirming your current address timed out.",
+      );
+
+      setAddress(resolved.address);
+      setAddressPlaceId(resolved.placeId);
+      setAddressPoint({
+        latitude: resolved.latitude,
+        longitude: resolved.longitude,
+      });
+      setSuggestionsVisible(false);
+      setAddressSuggestions([]);
+      addressSessionToken.current = createAddressSessionToken();
+      showNotice(
+        "Current address confirmed",
+        "This address will be saved to your profile and prefilled for new orders.",
+        "success",
+      );
+    } catch (error) {
+      showNotice(
+        "Could not use current location",
+        error instanceof OperationTimeoutError
+          ? "Location took too long. Check that location is enabled, then try again or enter the address manually."
+          : error instanceof Error
+            ? error.message
+            : "Enter and select your pickup address manually instead.",
+      );
+    } finally {
+      setIsUsingCurrentLocation(false);
+    }
+  };
+
+  const ensureRegistrationAddress = async () => {
+    if (addressPlaceId && addressPoint) return true;
+    if (!address.trim()) return false;
+
+    setAddressResolving(true);
+    try {
+      const resolved = await withTimeout(
+        resolvePickupAddress(
+          {
+            address: address.trim(),
+            sessionToken: addressSessionToken.current,
+          },
+          { auth: false },
+        ),
+        AUTH_TIMEOUT_MS,
+        "Address confirmation timed out.",
+      );
+      setAddress(resolved.address);
+      setAddressPlaceId(resolved.placeId);
+      setAddressPoint({
+        latitude: resolved.latitude,
+        longitude: resolved.longitude,
+      });
+      addressSessionToken.current = createAddressSessionToken();
+      return true;
+    } catch (error) {
+      setSuggestionsVisible(true);
+      showNotice(
+        "Choose a real pickup address",
+        `${error instanceof Error ? error.message : "We could not confirm this address."} Select one of the nearby suggestions to continue.`,
+      );
+      return false;
+    } finally {
+      setAddressResolving(false);
+    }
   };
 
   const showNotice = (
@@ -237,9 +462,9 @@ export default function LoginScreen() {
     if (isSubmitting) return;
 
     if (authMode === "create" && registerStep < 2) {
-      if (validateRegistrationStep()) {
-        animateStep((registerStep + 1) as RegisterStep, 1);
-      }
+      if (!validateRegistrationStep()) return;
+      if (registerStep === 1 && !(await ensureRegistrationAddress())) return;
+      animateStep((registerStep + 1) as RegisterStep, 1);
       return;
     }
 
@@ -259,15 +484,22 @@ export default function LoginScreen() {
         );
 
       try {
+        // Pressing Sign in is an explicit new auth attempt. Any older pending
+        // signup marker must not hijack this attempt or future app launches.
+        await clearPendingEmailVerification();
         const result = await waitForLogin(
           login({ email: email.trim(), password }),
         );
         if (!result.success || !result.data?.accessToken) {
           if (result.data?.requiresEmailConfirmation) {
             const normalizedEmail = email.trim().toLowerCase();
+            let pendingVerification = null;
             try {
-              await withTimeout(
-                savePendingEmailVerification(normalizedEmail),
+              pendingVerification = await withTimeout(
+                savePendingEmailVerification(
+                  normalizedEmail,
+                  "unverified-login",
+                ),
                 2_000,
                 "Saving verification state timed out.",
               );
@@ -278,6 +510,7 @@ export default function LoginScreen() {
               pathname: "/verify-email",
               params: {
                 email: normalizedEmail,
+                flowId: pendingVerification?.flowId,
                 status: "unverified",
                 autoResend: "true",
               },
@@ -325,6 +558,9 @@ export default function LoginScreen() {
           phoneNumber: phone.trim(),
           name: fullName.trim(),
           address: address.trim(),
+          addressPlaceId,
+          latitude: addressPoint!.latitude,
+          longitude: addressPoint!.longitude,
         }),
         AUTH_TIMEOUT_MS,
         "Registration timed out.",
@@ -342,11 +578,15 @@ export default function LoginScreen() {
       }
 
       const normalizedEmail = email.trim().toLowerCase();
-      await savePendingEmailVerification(normalizedEmail);
+      const pendingVerification = await savePendingEmailVerification(
+        normalizedEmail,
+        "signup",
+      );
       router.replace({
         pathname: "/verify-email",
         params: {
           email: normalizedEmail,
+          flowId: pendingVerification?.flowId,
           status: "registered",
           message: result.message,
         },
@@ -412,11 +652,95 @@ export default function LoginScreen() {
             label="Pickup address"
             icon="location-outline"
             value={address}
-            onChangeText={setAddress}
-            placeholder="12 Kudirat Abiola Way"
+            onChangeText={handleAddressChange}
+            placeholder="Start typing your street or landmark"
             autoComplete="street-address"
             onFocus={keepFocusedInputVisible}
           />
+          <SoftPressable
+            onPress={() => void handleUseCurrentLocation()}
+            disabled={isUsingCurrentLocation || addressResolving}
+            style={[
+              styles.locationButton,
+              (isUsingCurrentLocation || addressResolving) &&
+                styles.buttonDisabled,
+            ]}
+          >
+            {isUsingCurrentLocation ? (
+              <ActivityIndicator
+                color={LaundryTheme.colors.primaryDark}
+                size="small"
+              />
+            ) : (
+              <Ionicons
+                name="navigate-outline"
+                size={18}
+                color={LaundryTheme.colors.primaryDark}
+              />
+            )}
+            <View style={styles.locationButtonCopy}>
+              <Text style={styles.locationButtonTitle}>
+                Use my current location
+              </Text>
+              <Text style={styles.locationButtonMeta}>
+                We’ll identify and confirm the nearest real address.
+              </Text>
+            </View>
+          </SoftPressable>
+          {addressSearching || addressResolving ? (
+            <View style={styles.addressStatusRow}>
+              <ActivityIndicator
+                color={LaundryTheme.colors.primary}
+                size="small"
+              />
+              <Text style={styles.addressStatusText}>
+                {addressResolving
+                  ? "Confirming this pickup address…"
+                  : "Finding nearby addresses…"}
+              </Text>
+            </View>
+          ) : null}
+          {suggestionsVisible && addressSuggestions.length > 0 ? (
+            <View style={styles.suggestionsCard}>
+              {addressSuggestions.map((suggestion, index) => (
+                <SoftPressable
+                  key={suggestion.id}
+                  onPress={() => void handleSelectAddress(suggestion)}
+                  style={[
+                    styles.suggestionRow,
+                    index < addressSuggestions.length - 1 &&
+                      styles.suggestionRowBorder,
+                  ]}
+                >
+                  <Ionicons
+                    name="location-outline"
+                    size={18}
+                    color={LaundryTheme.colors.primary}
+                  />
+                  <View style={styles.suggestionCopy}>
+                    <Text style={styles.suggestionTitle} numberOfLines={1}>
+                      {suggestion.mainText}
+                    </Text>
+                    <Text style={styles.suggestionMeta} numberOfLines={2}>
+                      {suggestion.secondaryText}
+                    </Text>
+                  </View>
+                </SoftPressable>
+              ))}
+            </View>
+          ) : null}
+          {addressPlaceId && addressPoint ? (
+            <View style={styles.confirmedAddressPill}>
+              <Ionicons
+                name="checkmark-circle"
+                size={18}
+                color="#11875D"
+              />
+              <Text style={styles.confirmedAddressText}>
+                Real pickup address confirmed
+              </Text>
+            </View>
+          ) : null}
           <View style={styles.infoPill}>
             <Ionicons
               name="shield-checkmark-outline"
@@ -951,6 +1275,94 @@ const styles = StyleSheet.create({
   },
   progressTrackActive: {
     backgroundColor: LaundryTheme.colors.primary,
+  },
+  locationButton: {
+    minHeight: 60,
+    marginTop: -3,
+    marginBottom: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: "#DED4F0",
+    backgroundColor: LaundryTheme.colors.primarySoft,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 11,
+  },
+  locationButtonCopy: { flex: 1 },
+  locationButtonTitle: {
+    color: LaundryTheme.colors.primaryDark,
+    fontSize: 12,
+    fontWeight: "900",
+  },
+  locationButtonMeta: {
+    color: "#76668A",
+    fontSize: 10,
+    lineHeight: 14,
+    marginTop: 2,
+  },
+  addressStatusRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: -3,
+    marginBottom: 12,
+    paddingHorizontal: 4,
+  },
+  addressStatusText: {
+    color: LaundryTheme.colors.muted,
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  suggestionsCard: {
+    marginTop: -5,
+    marginBottom: 12,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: "#E8E1F0",
+    backgroundColor: "#FFFFFF",
+    overflow: "hidden",
+  },
+  suggestionRow: {
+    minHeight: 58,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 13,
+    paddingVertical: 10,
+  },
+  suggestionRowBorder: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#E8E1F0",
+  },
+  suggestionCopy: { flex: 1 },
+  suggestionTitle: {
+    color: LaundryTheme.colors.ink,
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  suggestionMeta: {
+    color: LaundryTheme.colors.muted,
+    fontSize: 10,
+    lineHeight: 14,
+    marginTop: 2,
+  },
+  confirmedAddressPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    marginTop: -4,
+    marginBottom: 12,
+    paddingHorizontal: 11,
+    paddingVertical: 9,
+    borderRadius: 12,
+    backgroundColor: "#EAF8F2",
+  },
+  confirmedAddressText: {
+    color: "#117052",
+    fontSize: 11,
+    fontWeight: "800",
   },
   infoPill: {
     flexDirection: "row",

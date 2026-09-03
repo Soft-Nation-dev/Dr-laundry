@@ -27,6 +27,7 @@ export type DriverTask = {
   paymentMarkedAt: string | null;
   latitude: number | null;
   longitude: number | null;
+  locationAvailable: boolean;
   lineItems: OrderLineItem[];
   assignedToMe: boolean;
   availableToDrivers: boolean;

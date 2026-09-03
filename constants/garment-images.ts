@@ -1,7 +1,7 @@
 export const GARMENT_IMAGES: Record<string, number> = {
   polo: require("../assets/images/garments/polo.webp"),
-  tshirt: require("../assets/images/garments/tshirt.webp"),
-  blouse: require("../assets/images/garments/blouse.webp"),
+  "long-sleeved-shirt": require("../assets/images/garments/long-sleeved-shirts.webp"),
+  underwear: require("../assets/images/garments/underwear.webp"),
   shorts: require("../assets/images/garments/shorts.webp"),
   skirt: require("../assets/images/garments/skirt.webp"),
   trouser: require("../assets/images/garments/trouser.webp"),

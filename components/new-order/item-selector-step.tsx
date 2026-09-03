@@ -46,7 +46,7 @@ const SMART_GROUPS: SmartGroup[] = [
     label: "Tops",
     icon: "shirt-outline",
     colors: ["#F2E9FF", "#E4D4FF"],
-    itemIds: ["polo", "tshirt", "blouse"],
+    itemIds: ["polo", "long-sleeved-shirt"],
   },
   {
     id: "bottoms",
@@ -83,7 +83,7 @@ const SMART_GROUPS: SmartGroup[] = [
     label: "Small Items",
     icon: "albums-outline",
     colors: ["#FFF7DA", "#FFEDAF"],
-    itemIds: ["socks-caps"],
+    itemIds: ["underwear", "socks-caps"],
   },
   {
     id: "footwear",
@@ -96,8 +96,8 @@ const SMART_GROUPS: SmartGroup[] = [
 
 const ITEM_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   polo: "shirt-outline",
-  tshirt: "shirt-outline",
-  blouse: "shirt-outline",
+  "long-sleeved-shirt": "shirt-outline",
+  underwear: "layers-outline",
   shorts: "body-outline",
   skirt: "woman-outline",
   trouser: "body-outline",

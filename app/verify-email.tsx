@@ -8,6 +8,8 @@ import { resendVerification, syncCurrentUserProfile } from "@/lib/auth-api";
 import {
   clearPendingEmailVerification,
   getPendingEmailVerification,
+  matchesPendingEmailVerification,
+  type PendingEmailVerification,
   savePendingEmailVerification,
 } from "@/lib/pending-email-verification";
 import { getProfile } from "@/lib/profile-api";
@@ -27,7 +29,6 @@ import {
   AppState,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -38,11 +39,13 @@ const RESEND_COOLDOWN_SECONDS = 60;
 export default function VerifyEmailScreen() {
   const {
     email: emailParam,
+    flowId: flowIdParam,
     autoResend,
     message: messageParam,
     status,
   } = useLocalSearchParams<{
     email?: string;
+    flowId?: string;
     autoResend?: string;
     message?: string;
     status?: "registered" | "resent" | "resend-failed" | "unverified";
@@ -52,6 +55,7 @@ export default function VerifyEmailScreen() {
   }, [emailParam]);
 
   const [email, setEmail] = useState(initialEmail);
+  const [isCheckingAccess, setIsCheckingAccess] = useState(true);
   const [isResending, setIsResending] = useState(false);
   const [resendCountdown, setResendCountdown] = useState(
     RESEND_COOLDOWN_SECONDS,
@@ -59,6 +63,7 @@ export default function VerifyEmailScreen() {
   const [notice, setNotice] = useState<AuthNoticeState | null>(null);
   const isCompletingAuth = useRef(false);
   const attemptedAutomaticResend = useRef(false);
+  const pendingVerification = useRef<PendingEmailVerification | null>(null);
 
   useEffect(() => {
     if (!status) return;
@@ -85,13 +90,6 @@ export default function VerifyEmailScreen() {
 
   useEffect(() => {
     let active = true;
-
-    const restorePendingEmail = async () => {
-      const pending = await getPendingEmailVerification();
-      if (active && !initialEmail && pending?.email) {
-        setEmail(pending.email);
-      }
-    };
 
     const finishIfAuthenticated = async () => {
       if (isCompletingAuth.current) return;
@@ -132,8 +130,38 @@ export default function VerifyEmailScreen() {
       }
     };
 
-    void restorePendingEmail();
-    void finishIfAuthenticated();
+    const initialize = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!active) return;
+
+      if (session) {
+        await finishIfAuthenticated();
+        return;
+      }
+
+      const pending = await getPendingEmailVerification();
+      if (!active) return;
+      if (
+        !pending ||
+        !matchesPendingEmailVerification(
+          pending,
+          initialEmail,
+          typeof flowIdParam === "string" ? flowIdParam : undefined,
+        )
+      ) {
+        await clearPendingEmailVerification();
+        if (active) router.replace("/login");
+        return;
+      }
+
+      pendingVerification.current = pending;
+      setEmail(pending.email);
+      setIsCheckingAccess(false);
+    };
+
+    void initialize();
 
     const appStateSubscription = AppState.addEventListener(
       "change",
@@ -148,7 +176,7 @@ export default function VerifyEmailScreen() {
       active = false;
       appStateSubscription.remove();
     };
-  }, [initialEmail]);
+  }, [flowIdParam, initialEmail]);
 
   useEffect(() => {
     if (resendCountdown <= 0) return;
@@ -161,6 +189,12 @@ export default function VerifyEmailScreen() {
   const sendVerificationLink = useCallback(
     async (automatic = false) => {
       if (isResending || (!automatic && resendCountdown > 0)) return;
+
+      if (!pendingVerification.current) {
+        await clearPendingEmailVerification();
+        router.replace("/login");
+        return;
+      }
 
       if (!email.trim()) {
         setNotice({
@@ -187,7 +221,13 @@ export default function VerifyEmailScreen() {
           return;
         }
 
-        await savePendingEmailVerification(email);
+        const currentPending = pendingVerification.current;
+        const refreshedPending = await savePendingEmailVerification(
+          email,
+          currentPending?.reason ?? "signup",
+          currentPending?.flowId,
+        );
+        pendingVerification.current = refreshedPending;
         setResendCountdown(RESEND_COOLDOWN_SECONDS);
         setNotice({
           title: "Link sent",
@@ -219,6 +259,7 @@ export default function VerifyEmailScreen() {
 
   useEffect(() => {
     if (
+      isCheckingAccess ||
       autoResend !== "true" ||
       attemptedAutomaticResend.current ||
       !email.trim()
@@ -228,7 +269,7 @@ export default function VerifyEmailScreen() {
 
     attemptedAutomaticResend.current = true;
     void sendVerificationLink(true);
-  }, [autoResend, email, sendVerificationLink]);
+  }, [autoResend, email, isCheckingAccess, sendVerificationLink]);
 
   const handleResend = () => {
     void sendVerificationLink(false);
@@ -238,6 +279,20 @@ export default function VerifyEmailScreen() {
     await clearPendingEmailVerification();
     router.replace("/login");
   };
+
+  if (isCheckingAccess) {
+    return (
+      <LinearGradient
+        colors={[LaundryTheme.colors.bgStart, "#FFFFFF", LaundryTheme.colors.bgEnd]}
+        style={styles.container}
+      >
+        <SafeAreaView style={styles.checkingContainer}>
+          <ActivityIndicator color={LaundryTheme.colors.primary} />
+          <Text style={styles.checkingText}>Checking your account…</Text>
+        </SafeAreaView>
+      </LinearGradient>
+    );
+  }
 
   return (
     <LinearGradient
@@ -277,18 +332,13 @@ export default function VerifyEmailScreen() {
             Tap the confirmation link in the email from Dr Laundry. It will
             bring you back to the app and sign you in securely.
           </Text>
-          <View style={styles.inputBlock}>
+          <View style={styles.emailBlock}>
             <Text style={styles.label}>Email</Text>
-            <TextInput
-              value={email}
-              onChangeText={setEmail}
-              onEndEditing={() => void savePendingEmailVerification(email)}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              placeholder="name@example.com"
-              placeholderTextColor="#9A8BB8"
-              style={styles.input}
-            />
+            <View style={styles.emailValueRow}>
+              <Ionicons name="mail-outline" size={18} color="#776B91" />
+              <Text style={styles.emailValue} numberOfLines={1}>{email}</Text>
+              <Ionicons name="lock-closed" size={15} color="#9A8BB8" />
+            </View>
           </View>
           <SoftPressable
             onPress={handleResend}
@@ -358,6 +408,17 @@ const styles = StyleSheet.create({
     borderColor: "#E6EAF2",
     padding: 18,
   },
+  checkingContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+  },
+  checkingText: {
+    color: LaundryTheme.colors.muted,
+    fontSize: 13,
+    fontWeight: "700",
+  },
   mailIcon: {
     width: 68,
     height: 68,
@@ -387,7 +448,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
   },
-  inputBlock: {
+  emailBlock: {
     marginBottom: 14,
   },
   label: {
@@ -396,15 +457,22 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     fontWeight: "700",
   },
-  input: {
+  emailValueRow: {
+    minHeight: 51,
     backgroundColor: "#FFFFFF",
     borderWidth: 1,
     borderColor: LaundryTheme.colors.border,
     borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
+    paddingHorizontal: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  emailValue: {
+    flex: 1,
+    fontSize: 14,
     color: LaundryTheme.colors.ink,
+    fontWeight: "700",
   },
   primaryButton: {
     marginTop: 4,

@@ -60,6 +60,8 @@ export function getOrderStatusLabel(status: OrderStatus): string {
       return "Pickup confirmed";
     case "processing":
       return "Cleaning in progress";
+    case "ready-for-delivery":
+      return "Ready for delivery";
     case "out-for-delivery":
       return "Out for delivery";
     case "delivered":
@@ -152,6 +154,23 @@ export function resolvePromisedDeliveryISO(
     promised.getTime() + getTurnaroundHours(isExpress) * 60 * 60 * 1000,
   );
   return promised.toISOString();
+}
+
+export function applySharedPickupDiscount(
+  totals: PricingTotals,
+): PricingTotals {
+  const standardTotal = totals.modeSubtotal;
+  const expressPremium = roundToNearest(
+    standardTotal * EXPRESS_SURCHARGE_RATE,
+  );
+  return {
+    ...totals,
+    pickupDeliveryFee: 0,
+    sharedPickupDiscount: STANDARD_PICKUP_AND_DELIVERY_FEE,
+    standardTotal,
+    expressPremium,
+    expressTotal: standardTotal + expressPremium + EXPRESS_DELIVERY_FEE,
+  };
 }
 
 export function formatDateTime(isoDate: string): string {

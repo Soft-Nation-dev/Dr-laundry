@@ -59,7 +59,9 @@ export default function NotificationsScreen() {
         entry.id === item.id ? { ...entry, readAt: new Date().toISOString() } : entry,
       ));
     }
-    if (item.orderId) {
+    if (item.orderId && item.route === "/confirm-delivery") {
+      router.push({ pathname: "/confirm-delivery", params: { orderId: item.orderId } } as never);
+    } else if (item.orderId) {
       router.push({ pathname: "/track-order", params: { orderId: item.orderId } });
     } else if (item.route) {
       router.push(item.route as never);

@@ -1,4 +1,8 @@
-import { calculateServerPricing } from "../../shared/pricing-catalog";
+import {
+  calculateServerPricing,
+  SHARED_EXPRESS_DELIVERY_FEE,
+  SHARED_STANDARD_PICKUP_AND_DELIVERY_FEE,
+} from "../../shared/pricing-catalog";
 
 // CORS Helper Headers
 const corsHeaders = {
@@ -55,21 +59,26 @@ type DriverOrderRow = {
   delivery_window: string | null;
   is_express: boolean;
   paid_amount: number | string;
-  status: "pickup-confirmed" | "processing" | "out-for-delivery" | "delivered" | "cancelled";
+  status: "pickup-confirmed" | "processing" | "ready-for-delivery" | "out-for-delivery" | "delivered" | "cancelled";
   driver_task_type: DriverTaskType | null;
   driver_task_status: DriverTaskStatus | null;
-  latitude: number | null;
-  longitude: number | null;
+  latitude: number | string | null;
+  longitude: number | string | null;
+  delivery_at: string | null;
+  delivery_address: string | null;
+  delivery_latitude: number | string | null;
+  delivery_longitude: number | string | null;
+  delivery_confirmation_status: "not_required" | "pending" | "confirmed";
   payment_status: PaymentStatus;
   payment_method: PaymentMethod;
   payment_marked_by: string | null;
   payment_marked_by_role: string | null;
   payment_marked_at: string | null;
   available_to_drivers: boolean;
-  availability_source: "auto" | "staff" | null;
+  availability_source: "auto" | "staff" | "customer" | null;
   available_at: string | null;
   available_by_name: string | null;
-  available_by_role: "system" | "admin" | "superadmin" | null;
+  available_by_role: "system" | "customer" | "admin" | "superadmin" | null;
   cancellation_reason: string | null;
   cancelled_by_name: string | null;
   cancelled_by_role: "admin" | "superadmin" | null;
@@ -152,6 +161,8 @@ type TrackingOrder = {
   driver_task_status: DriverTaskStatus | null;
   latitude: number | null;
   longitude: number | null;
+  delivery_latitude: number | null;
+  delivery_longitude: number | null;
 };
 
 type AddressSuggestion = {
@@ -168,6 +179,12 @@ type ResolvedPickupAddress = {
   longitude: number;
 };
 
+type SharedPickupEligibility = {
+  eligible: boolean;
+  anchorOrderId: string | null;
+  discountAmount: number;
+};
+
 type PickupWindowCode = "morning" | "afternoon";
 type PickupDayCode = "today" | "tomorrow" | "next-day";
 
@@ -175,12 +192,13 @@ const ENUGU_CENTER = { latitude: 6.4584, longitude: 7.5464 };
 const ENUGU_AUTOCOMPLETE_RADIUS_METERS = 50_000;
 const ENUGU_SERVICE_RADIUS_KM = 75;
 const PICKUP_WINDOWS: Record<PickupWindowCode, { startHour: number; endHour: number }> = {
-  morning: { startHour: 10, endHour: 12 },
-  afternoon: { startHour: 15, endHour: 17 },
+  morning: { startHour: 8, endHour: 10 },
+  afternoon: { startHour: 17, endHour: 19 },
 };
 const DRIVER_ORDER_SELECT = [
-  "id,user_id,driver_id,address,pickup_at,pickup_window,promised_delivery_at,delivery_window",
+  "id,user_id,driver_id,address,pickup_at,pickup_window,promised_delivery_at,delivery_at,delivery_window",
   "is_express,paid_amount,status,driver_task_type,driver_task_status,latitude,longitude",
+  "delivery_address,delivery_latitude,delivery_longitude,delivery_confirmation_status",
   "payment_status,payment_method,payment_marked_by,payment_marked_by_role,payment_marked_at",
   "available_to_drivers,availability_source,available_at,available_by_name,available_by_role",
   "cancellation_reason,cancelled_by_name,cancelled_by_role",
@@ -322,17 +340,49 @@ async function getStaffRole(env: AppEnv, userJwt: string, userId: string): Promi
 }
 
 function taskTimeLabel(row: DriverOrderRow): string {
-  const scheduledAt = row.driver_task_type === "delivery" ? row.promised_delivery_at : row.pickup_at;
+  const scheduledAt = row.driver_task_type === "delivery" ? (row.delivery_at || row.promised_delivery_at) : row.pickup_at;
   const window = row.driver_task_type === "delivery" ? row.delivery_window : row.pickup_window;
   const date = new Date(scheduledAt);
   const dateText = Number.isNaN(date.getTime())
     ? "Scheduled"
     : new Intl.DateTimeFormat("en-NG", { weekday: "short", day: "numeric", month: "short" }).format(date);
-  return `${dateText} · ${window || "Flexible window"}`;
+  const windowText = window === "morning"
+    ? "8am to 10am"
+    : window === "afternoon" ? "5pm to 7pm" : "Flexible window";
+  return `${dateText} · ${windowText}`;
+}
+
+function validMapPoint(
+  latitudeValue: number | string | null | undefined,
+  longitudeValue: number | string | null | undefined,
+): { latitude: number; longitude: number } | null {
+  if (latitudeValue === null || latitudeValue === undefined || longitudeValue === null || longitudeValue === undefined) {
+    return null;
+  }
+  const latitude = Number(latitudeValue);
+  const longitude = Number(longitudeValue);
+  if (
+    !Number.isFinite(latitude) || !Number.isFinite(longitude) ||
+    latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180
+  ) return null;
+  return { latitude, longitude };
+}
+
+function driverTaskDestination(row: DriverOrderRow, type?: DriverTaskType) {
+  const taskType = type || row.driver_task_type || (['ready-for-delivery', 'out-for-delivery'].includes(row.status) ? 'delivery' : 'pickup');
+  if (taskType === "delivery") {
+    return validMapPoint(
+      row.delivery_latitude ?? row.latitude,
+      row.delivery_longitude ?? row.longitude,
+    );
+  }
+  return validMapPoint(row.latitude, row.longitude);
 }
 
 function toDriverTask(row: DriverOrderRow, customer: ProfileSummary | undefined, userId: string) {
-  const type: DriverTaskType = row.driver_task_type || (row.status === "out-for-delivery" ? "delivery" : "pickup");
+  const type: DriverTaskType = row.driver_task_type || (["ready-for-delivery", "out-for-delivery"].includes(row.status) ? "delivery" : "pickup");
+  const deliveryTask = type === "delivery";
+  const destination = driverTaskDestination(row, type);
   return {
     id: row.id,
     orderId: row.id,
@@ -341,9 +391,9 @@ function toDriverTask(row: DriverOrderRow, customer: ProfileSummary | undefined,
     orderStatus: row.status,
     customerName: customer?.name || "Laundry customer",
     phoneNumber: customer?.phone_number || "",
-    address: row.address,
+    address: deliveryTask ? (row.delivery_address || row.address) : row.address,
     timeSlot: taskTimeLabel({ ...row, driver_task_type: type }),
-    scheduledAtISO: type === "delivery" ? row.promised_delivery_at : row.pickup_at,
+    scheduledAtISO: type === "delivery" ? (row.delivery_at || row.promised_delivery_at) : row.pickup_at,
     promisedDeliveryISO: row.promised_delivery_at,
     isExpress: row.is_express,
     paidAmount: Number(row.paid_amount),
@@ -360,8 +410,9 @@ function toDriverTask(row: DriverOrderRow, customer: ProfileSummary | undefined,
     cancellationReason: row.cancellation_reason,
     cancelledByName: row.cancelled_by_name,
     cancelledByRole: row.cancelled_by_role,
-    latitude: row.latitude,
-    longitude: row.longitude,
+    latitude: destination?.latitude ?? null,
+    longitude: destination?.longitude ?? null,
+    locationAvailable: Boolean(destination),
     lineItems: (row.order_items || []).map((item) => ({
       id: item.item_id,
       name: item.name,
@@ -580,6 +631,102 @@ async function resolvePickupAddress(
   return resolveGooglePlace(env, placeId, input.sessionToken);
 }
 
+async function reversePickupAddress(
+  env: AppEnv,
+  input: {
+    latitude: number;
+    longitude: number;
+    addressHint?: string;
+    sessionToken?: string;
+  },
+): Promise<ResolvedPickupAddress> {
+  const point = { latitude: input.latitude, longitude: input.longitude };
+  if (haversineKm(ENUGU_CENTER, point) > ENUGU_SERVICE_RADIUS_KM) {
+    throw new Error("Pickup is currently available only within the Enugu service area");
+  }
+
+  const geocodeUrl = new URL("https://maps.googleapis.com/maps/api/geocode/json");
+  geocodeUrl.searchParams.set("latlng", `${point.latitude},${point.longitude}`);
+  geocodeUrl.searchParams.set("result_type", "street_address|premise|subpremise|route");
+  geocodeUrl.searchParams.set("language", "en");
+  geocodeUrl.searchParams.set("region", "ng");
+  geocodeUrl.searchParams.set("key", env.GOOGLE_ROUTES_API_KEY);
+
+  const response = await fetch(geocodeUrl);
+  if (response.ok) {
+    const payload = await response.json() as {
+      status?: unknown;
+      results?: {
+        place_id?: unknown;
+        formatted_address?: unknown;
+        geometry?: { location?: { lat?: unknown; lng?: unknown } };
+      }[];
+    };
+    const result = payload.results?.find((candidate) =>
+      typeof candidate.place_id === "string" &&
+      typeof candidate.formatted_address === "string" &&
+      typeof candidate.geometry?.location?.lat === "number" &&
+      typeof candidate.geometry.location.lng === "number"
+    );
+    if (result) {
+      return {
+        placeId: result.place_id as string,
+        address: result.formatted_address as string,
+        latitude: result.geometry!.location!.lat as number,
+        longitude: result.geometry!.location!.lng as number,
+      };
+    }
+  }
+
+  if (input.addressHint?.trim()) {
+    return resolvePickupAddress(env, {
+      address: input.addressHint.trim(),
+      sessionToken: input.sessionToken,
+    });
+  }
+  throw new Error("We found your location but could not identify a street address. Enter it manually instead.");
+}
+
+async function getSharedPickupEligibility(
+  env: AppEnv,
+  userJwt: string,
+  userId: string,
+  input: {
+    addressPlaceId: string;
+    pickupDay: PickupDayCode;
+    pickupWindow: PickupWindowCode;
+  },
+): Promise<SharedPickupEligibility> {
+  const queryUrl = new URL(`${env.SUPABASE_URL}/rest/v1/orders`);
+  queryUrl.searchParams.set("select", "id");
+  queryUrl.searchParams.set("user_id", `eq.${userId}`);
+  queryUrl.searchParams.set("payment_status", "eq.paid");
+  queryUrl.searchParams.set("status", "eq.pickup-confirmed");
+  queryUrl.searchParams.set("pickup_completed_at", "is.null");
+  queryUrl.searchParams.set("shared_pickup_order_id", "is.null");
+  queryUrl.searchParams.set("archived_at", "is.null");
+  queryUrl.searchParams.set("address_place_id", `eq.${input.addressPlaceId}`);
+  queryUrl.searchParams.set("pickup_day", `eq.${input.pickupDay}`);
+  queryUrl.searchParams.set("pickup_window", `eq.${input.pickupWindow}`);
+  queryUrl.searchParams.set("order", "created_at.asc");
+  queryUrl.searchParams.set("limit", "1");
+  const response = await fetch(queryUrl, {
+    headers: supabaseHeaders(env, userJwt),
+  });
+  if (!response.ok) {
+    throw new Error("Shared pickup eligibility could not be checked");
+  }
+  const rows = await response.json() as { id: string }[];
+  const anchorOrderId = rows[0]?.id ?? null;
+  return {
+    eligible: Boolean(anchorOrderId),
+    anchorOrderId,
+    discountAmount: anchorOrderId
+      ? SHARED_STANDARD_PICKUP_AND_DELIVERY_FEE
+      : 0,
+  };
+}
+
 function optionalFiniteNumber(value: unknown): number | null {
   if (value === null || value === undefined) return null;
   const parsed = Number(value);
@@ -612,14 +759,22 @@ async function loadTrackingOrder(
   const query = new URL(`${env.SUPABASE_URL}/rest/v1/orders`);
   query.searchParams.set(
     "select",
-    "id,user_id,driver_id,status,driver_task_type,driver_task_status,latitude,longitude",
+    "id,user_id,driver_id,status,driver_task_type,driver_task_status,latitude,longitude,delivery_latitude,delivery_longitude",
   );
   query.searchParams.set("id", `eq.${orderId}`);
+  query.searchParams.set("archived_at", "is.null");
   query.searchParams.set("limit", "1");
   const response = await fetch(query, { headers: supabaseHeaders(env, userJwt) });
   if (!response.ok) return null;
   const rows = (await response.json()) as TrackingOrder[];
   return rows[0] ?? null;
+}
+
+function trackingDestination(order: TrackingOrder) {
+  return validMapPoint(
+    order.driver_task_type === "delivery" ? (order.delivery_latitude ?? order.latitude) : order.latitude,
+    order.driver_task_type === "delivery" ? (order.delivery_longitude ?? order.longitude) : order.longitude,
+  );
 }
 
 async function loadCurrentDriverLocation(
@@ -635,6 +790,57 @@ async function loadCurrentDriverLocation(
   if (!response.ok) return null;
   const rows = (await response.json()) as TrackingLocation[];
   return rows[0] ?? null;
+}
+
+type GoogleRoutePayload = {
+  routes?: {
+    duration?: string;
+    distanceMeters?: number;
+    polyline?: { encodedPolyline?: string };
+  }[];
+  error?: { code?: number; message?: string; status?: string };
+};
+
+async function requestGoogleRoadRoute(
+  env: AppEnv,
+  origin: { latitude: number; longitude: number },
+  destination: { latitude: number; longitude: number },
+  trafficAware: boolean,
+) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 9_000);
+  try {
+    const response = await fetch("https://routes.googleapis.com/directions/v2:computeRoutes", {
+      method: "POST",
+      signal: controller.signal,
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": env.GOOGLE_ROUTES_API_KEY,
+        "X-Goog-FieldMask": "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline",
+      },
+      body: JSON.stringify({
+        origin: { location: { latLng: origin } },
+        destination: { location: { latLng: destination } },
+        travelMode: "DRIVE",
+        ...(trafficAware ? { routingPreference: "TRAFFIC_AWARE" } : {}),
+        computeAlternativeRoutes: false,
+        polylineQuality: "HIGH_QUALITY",
+        polylineEncoding: "ENCODED_POLYLINE",
+        languageCode: "en",
+        units: "METRIC",
+      }),
+    });
+    const payload = await response.json().catch(() => ({})) as GoogleRoutePayload;
+    return { response, payload, timedOut: false };
+  } catch (error) {
+    return {
+      response: null,
+      payload: {} as GoogleRoutePayload,
+      timedOut: error instanceof Error && error.name === "AbortError",
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 // Response Helpers
@@ -701,9 +907,14 @@ export default {
 
       // Verify JWT with Supabase Auth endpoint
       let user: any = null;
+      const isPublicAddressLookup =
+        (pathname === "/api/addresses/suggestions" && request.method === "GET") ||
+        (pathname === "/api/addresses/resolve" && request.method === "POST") ||
+        (pathname === "/api/addresses/reverse" && request.method === "POST");
       if (
         pathname !== "/api/orders/paystack-webhook" &&
-        pathname !== "/api/health"
+        pathname !== "/api/health" &&
+        !isPublicAddressLookup
       ) {
         if (!userJwt) {
           return jsonResponse(
@@ -901,6 +1112,56 @@ export default {
         }
       }
 
+      // POST /api/addresses/reverse
+      if (pathname === "/api/addresses/reverse" && request.method === "POST") {
+        const body = await request.json() as {
+          latitude?: unknown;
+          longitude?: unknown;
+          addressHint?: unknown;
+          sessionToken?: unknown;
+        };
+        const latitude = Number(body.latitude);
+        const longitude = Number(body.longitude);
+        const addressHint = typeof body.addressHint === "string"
+          ? body.addressHint.trim().slice(0, 160)
+          : undefined;
+        const sessionToken = typeof body.sessionToken === "string" &&
+          /^[A-Za-z0-9_-]{10,80}$/.test(body.sessionToken)
+          ? body.sessionToken
+          : undefined;
+        if (
+          !Number.isFinite(latitude) ||
+          !Number.isFinite(longitude) ||
+          latitude < -90 ||
+          latitude > 90 ||
+          longitude < -180 ||
+          longitude > 180
+        ) {
+          return jsonResponse(
+            { success: false, message: "A valid current location is required", data: null },
+            400,
+          );
+        }
+        try {
+          const resolved = await reversePickupAddress(env, {
+            latitude,
+            longitude,
+            addressHint,
+            sessionToken,
+          });
+          return jsonResponse({ success: true, message: "Current address confirmed", data: resolved });
+        } catch (error) {
+          return jsonResponse(
+            {
+              success: false,
+              message: error instanceof Error ? error.message : "Current address could not be confirmed",
+              data: null,
+            },
+            400,
+          );
+        }
+      }
+
       // GET /api/orders/pickup-availability
       if (pathname === "/api/orders/pickup-availability" && request.method === "GET") {
         return jsonResponse({
@@ -908,6 +1169,54 @@ export default {
           message: "Pickup availability loaded",
           data: { serverTime: new Date().toISOString(), days: getPickupAvailability() },
         });
+      }
+
+      const confirmDeliveryMatch = pathname.match(/^\/api\/orders\/([^/]+)\/confirm-delivery$/);
+      if (confirmDeliveryMatch && request.method === "POST") {
+        const body = await request.json() as {
+          deliveryDay?: unknown;
+          deliveryWindow?: unknown;
+          addressPlaceId?: unknown;
+          sessionToken?: unknown;
+        };
+        const deliveryDay = typeof body.deliveryDay === "string" ? body.deliveryDay : "";
+        const deliveryWindow = typeof body.deliveryWindow === "string" ? body.deliveryWindow : "";
+        const addressPlaceId = typeof body.addressPlaceId === "string" ? body.addressPlaceId.trim() : "";
+        const sessionToken = typeof body.sessionToken === "string" ? body.sessionToken : undefined;
+        if (!isPickupDay(deliveryDay) || !isPickupWindow(deliveryWindow) || !addressPlaceId) {
+          return jsonResponse({ success: false, message: "Choose a valid delivery date, window and confirmed address", data: null }, 400);
+        }
+        try {
+          const [resolved, deliveryAt] = await Promise.all([
+            resolveGooglePlace(env, addressPlaceId, sessionToken),
+            Promise.resolve(resolvePickupAt(deliveryDay, deliveryWindow)),
+          ]);
+          const result = await callSupabaseRpc<{
+            orderId: string;
+            deliveryAt: string;
+            confirmed: boolean;
+          }>(env, userJwt, "confirm_order_delivery", {
+            p_order_id: decodeURIComponent(confirmDeliveryMatch[1]),
+            p_delivery_day: deliveryDay,
+            p_delivery_window: deliveryWindow,
+            p_delivery_at: deliveryAt,
+            p_address: resolved.address,
+            p_address_place_id: resolved.placeId,
+            p_latitude: resolved.latitude,
+            p_longitude: resolved.longitude,
+            p_worker_secret: env.PAYMENT_WORKER_SECRET,
+          });
+          if (!result.ok) {
+            return jsonResponse({ success: false, message: result.message || "Delivery could not be confirmed", data: null }, result.status === 404 ? 404 : 409);
+          }
+          return jsonResponse({ success: true, message: "Delivery date, window and address confirmed", data: result.data });
+        } catch (error) {
+          return jsonResponse({
+            success: false,
+            message: error instanceof Error ? error.message.replace("pickup", "delivery") : "Delivery could not be confirmed",
+            data: null,
+          }, 400);
+        }
       }
 
       // This endpoint is advisory for the checkout UI. The database RPC repeats
@@ -918,6 +1227,7 @@ export default {
         eligibilityUrl.searchParams.set("select", "id");
         eligibilityUrl.searchParams.set("user_id", `eq.${user.id}`);
         eligibilityUrl.searchParams.set("or", "(payment_status.eq.paid,payment_method.eq.pay_on_delivery)");
+        eligibilityUrl.searchParams.set("archived_at", "is.null");
         eligibilityUrl.searchParams.set("limit", "1");
         const eligibilityResponse = await fetch(eligibilityUrl, {
           headers: supabaseHeaders(env, userJwt),
@@ -929,10 +1239,38 @@ export default {
           );
         }
         const priorOrders = (await eligibilityResponse.json()) as { id: string }[];
+        const addressPlaceId = (url.searchParams.get("addressPlaceId") || "").trim();
+        const pickupDay = (url.searchParams.get("pickupDay") || "") as PickupDayCode;
+        const pickupWindow = (url.searchParams.get("pickupWindow") || "") as PickupWindowCode;
+        let sharedPickup: SharedPickupEligibility = {
+          eligible: false,
+          anchorOrderId: null,
+          discountAmount: 0,
+        };
+        if (
+          addressPlaceId &&
+          addressPlaceId.length <= 512 &&
+          isPickupDay(pickupDay) &&
+          isPickupWindow(pickupWindow)
+        ) {
+          try {
+            sharedPickup = await getSharedPickupEligibility(env, userJwt, user.id, {
+              addressPlaceId,
+              pickupDay,
+              pickupWindow,
+            });
+          } catch {
+            // Payment options remain usable at full price. Order creation repeats
+            // this check atomically and never trusts this advisory quote.
+          }
+        }
         return jsonResponse({
           success: true,
           message: "Payment options loaded",
-          data: { payOnDeliveryEligible: priorOrders.length === 0 },
+          data: {
+            payOnDeliveryEligible: priorOrders.length === 0,
+            sharedPickup,
+          },
         });
       }
 
@@ -1009,9 +1347,26 @@ export default {
         const randomChunk = 100 + (crypto.getRandomValues(new Uint32Array(1))[0] % 900);
         const orderId = `DL-${timeChunk}${randomChunk}`;
 
+        let baselinePricing: ReturnType<typeof calculateServerPricing>;
         let pricing: ReturnType<typeof calculateServerPricing>;
+        let sharedPickup: SharedPickupEligibility = {
+          eligible: false,
+          anchorOrderId: null,
+          discountAmount: 0,
+        };
         try {
-          pricing = calculateServerPricing(draft.lineItems, draft.mode, isExpress);
+          baselinePricing = calculateServerPricing(draft.lineItems, draft.mode, isExpress);
+          sharedPickup = await getSharedPickupEligibility(env, userJwt, user.id, {
+            addressPlaceId: confirmedAddress.placeId,
+            pickupDay: draft.pickupDay,
+            pickupWindow: draft.pickupWindow,
+          });
+          pricing = calculateServerPricing(
+            draft.lineItems,
+            draft.mode,
+            isExpress,
+            sharedPickup.eligible ? 0 : undefined,
+          );
         } catch (error) {
           return jsonResponse(
             {
@@ -1025,12 +1380,12 @@ export default {
         const clientTotal = isExpress
           ? draft.totals?.expressTotal
           : draft.totals?.standardTotal;
-        if (clientTotal !== undefined && Number(clientTotal) !== pricing.finalAmount) {
+        if (clientTotal !== undefined && Number(clientTotal) !== baselinePricing.finalAmount) {
           return jsonResponse(
             {
               success: false,
               message: "Prices changed while you were checking out. Review the refreshed total and try again.",
-              data: { expectedTotal: pricing.finalAmount },
+              data: { expectedTotal: baselinePricing.finalAmount },
             },
             409,
           );
@@ -1074,6 +1429,7 @@ export default {
           id: orderId,
           user_id: user.id,
           address: confirmedAddress.address,
+          address_place_id: confirmedAddress.placeId,
           latitude: confirmedAddress.latitude,
           longitude: confirmedAddress.longitude,
           note: draft.note || "",
@@ -1089,6 +1445,12 @@ export default {
           turnaround_hours: turnaroundHours,
           status: "pickup-confirmed",
           paid_amount: finalAmount,
+          mode_subtotal: pricing.modeSubtotal,
+          pickup_delivery_fee: pricing.pickupDeliveryFee,
+          shared_pickup_discount: pricing.sharedPickupDiscount,
+          shared_pickup_order_id: sharedPickup.anchorOrderId,
+          express_premium: isExpress ? pricing.expressPremium : 0,
+          express_delivery_fee: isExpress ? SHARED_EXPRESS_DELIVERY_FEE : 0,
           payment_method: paymentMethod,
           payment_status: paymentMethod === "pay_on_delivery" ? "unpaid" : "pending",
           payment_reference: paystack?.reference ?? null,
@@ -1142,6 +1504,7 @@ export default {
             payment_method: paymentMethod,
             payment_status: createResult.data.paymentStatus,
             payment_expires_at: createResult.data.paymentExpiresAt,
+            shared_pickup: sharedPickup,
           },
         });
       }
@@ -1156,6 +1519,7 @@ export default {
         );
         queryUrl.searchParams.set("id", `eq.${orderId}`);
         queryUrl.searchParams.set("user_id", `eq.${user.id}`);
+        queryUrl.searchParams.set("archived_at", "is.null");
         queryUrl.searchParams.set("limit", "1");
         const orderResponse = await fetch(queryUrl, { headers: supabaseHeaders(env, userJwt) });
         const rows = orderResponse.ok ? ((await orderResponse.json()) as PayableOrderRow[]) : [];
@@ -1243,6 +1607,158 @@ export default {
           );
         }
         return jsonResponse({ success: true, message: "Cash payment recorded permanently", data: result.data });
+      }
+
+      if (pathname === "/api/admin/analytics/locations" && request.method === "GET") {
+        const role = await getStaffRole(env, userJwt, user.id);
+        if (role !== "superadmin") {
+          return jsonResponse({ success: false, message: "Superadmin analytics access is required", data: null }, 403);
+        }
+        const queryUrl = new URL(`${env.SUPABASE_URL}/rest/v1/orders`);
+        queryUrl.searchParams.set("select", "user_id,address,address_place_id,latitude,longitude,paid_amount,payment_status,status,created_at");
+        queryUrl.searchParams.set("status", "neq.cancelled");
+        queryUrl.searchParams.set("archived_at", "is.null");
+        queryUrl.searchParams.set("is_test_order", "eq.false");
+        queryUrl.searchParams.set("order", "created_at.desc");
+        queryUrl.searchParams.set("limit", "5000");
+        const response = await fetch(queryUrl, { headers: supabaseHeaders(env, userJwt) });
+        if (!response.ok) return jsonResponse({ success: false, message: "Location analytics could not be loaded", data: null }, response.status);
+        const rows = await response.json() as {
+          user_id: string; address: string; address_place_id: string | null;
+          latitude: number | null; longitude: number | null; paid_amount: number | string;
+          payment_status: PaymentStatus; created_at: string;
+        }[];
+        type LocationGroup = {
+          placeId: string | null;
+          latitude: number | null;
+          longitude: number | null;
+          pointCount: number;
+          points: { latitude: number; longitude: number }[];
+          labels: Map<string, number>;
+          users: Set<string>;
+          orders: number;
+          paidRevenue: number;
+          lastOrderAt: string;
+        };
+        const groups: LocationGroup[] = [];
+        const addressGroups = new Map<string, LocationGroup>();
+        const clusterRadiusKm = 2;
+        for (const row of rows) {
+          const normalized = (row.address || "").trim().toLocaleLowerCase().replace(/\s+/g, " ");
+          const point = validMapPoint(row.latitude, row.longitude);
+          const addressParts = (row.address || "").split(",").map((part) => part.trim()).filter(Boolean);
+          const areaLabel = [...addressParts].reverse().find((part) =>
+            !/^(nigeria|enugu|enugu state|\d{5,6})$/i.test(part) && !/^\d+$/.test(part)
+          ) || row.address || "Unknown area";
+          let current: LocationGroup | undefined;
+          if (point) {
+            current = groups
+              .filter((group) => group.latitude !== null && group.longitude !== null)
+              .map((group) => ({ group, distance: haversineKm(point, { latitude: group.latitude!, longitude: group.longitude! }) }))
+              .filter(({ distance }) => distance <= clusterRadiusKm)
+              .sort((a, b) => a.distance - b.distance)[0]?.group;
+          } else {
+            const key = row.address_place_id || normalized;
+            if (!key) continue;
+            current = addressGroups.get(key);
+          }
+          if (!current) {
+            current = {
+              placeId: row.address_place_id,
+              latitude: point?.latitude ?? null,
+              longitude: point?.longitude ?? null,
+              pointCount: point ? 1 : 0,
+              points: point ? [point] : [],
+              labels: new Map([[areaLabel, 1]]),
+              users: new Set<string>(), orders: 0, paidRevenue: 0, lastOrderAt: row.created_at,
+            };
+            groups.push(current);
+            if (!point) addressGroups.set(row.address_place_id || normalized, current);
+          } else {
+            current.labels.set(areaLabel, (current.labels.get(areaLabel) || 0) + 1);
+            if (point) {
+              current.points.push(point);
+              current.latitude = ((current.latitude || 0) * current.pointCount + point.latitude) / (current.pointCount + 1);
+              current.longitude = ((current.longitude || 0) * current.pointCount + point.longitude) / (current.pointCount + 1);
+              current.pointCount += 1;
+            }
+          }
+          current.users.add(row.user_id);
+          current.orders += 1;
+          if (row.payment_status === "paid") current.paidRevenue += Number(row.paid_amount || 0);
+          if (row.created_at > current.lastOrderAt) current.lastOrderAt = row.created_at;
+        }
+        const locations = groups
+          .map((group) => {
+            const label = [...group.labels.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || "Unknown area";
+            const radiusKm = group.latitude === null || group.longitude === null ? 0 : group.points.reduce(
+              (largest, point) => Math.max(largest, haversineKm(point, { latitude: group.latitude!, longitude: group.longitude! })), 0,
+            );
+            return {
+            placeId: group.placeId, label, latitude: group.latitude, longitude: group.longitude,
+            customerCount: group.users.size, orderCount: group.orders,
+            paidRevenue: group.paidRevenue, lastOrderAt: group.lastOrderAt,
+            heatScore: group.users.size * 3 + group.orders,
+            radiusKm: Math.round(radiusKm * 10) / 10,
+          }; })
+          .sort((a, b) => b.heatScore - a.heatScore)
+          .slice(0, 50);
+        return jsonResponse({
+          success: true,
+          message: "Popular locations loaded",
+          data: {
+            locations,
+            totals: {
+              uniqueCustomers: new Set(rows.map((row) => row.user_id)).size,
+              mappedOrders: rows.length,
+              mappedLocations: locations.length,
+              clusterRadiusKm,
+            },
+          },
+        });
+      }
+
+      if (pathname === "/api/admin/analytics/income" && request.method === "GET") {
+        const role = await getStaffRole(env, userJwt, user.id);
+        if (role !== "superadmin") {
+          return jsonResponse({ success: false, message: "Superadmin income access is required", data: null }, 403);
+        }
+        const view = url.searchParams.get("view") === "year" ? "year" : "month";
+        const lagosParts = new Intl.DateTimeFormat("en-CA", {
+          timeZone: "Africa/Lagos", year: "numeric", month: "2-digit",
+        }).formatToParts(new Date());
+        const currentYear = Number(lagosParts.find((part) => part.type === "year")?.value);
+        const currentMonth = Number(lagosParts.find((part) => part.type === "month")?.value);
+        const requestedYear = Number(url.searchParams.get("year") || currentYear);
+        const requestedMonth = Number(url.searchParams.get("month") || currentMonth);
+        const year = Number.isInteger(requestedYear) && requestedYear >= 2020 && requestedYear <= 2100 ? requestedYear : currentYear;
+        const month = Number.isInteger(requestedMonth) && requestedMonth >= 1 && requestedMonth <= 12 ? requestedMonth : currentMonth;
+        const pad = (value: number) => String(value).padStart(2, "0");
+        let from: string;
+        let to: string;
+        if (view === "year") {
+          from = `${year}-01-01T00:00:00+01:00`;
+          to = `${year + 1}-01-01T00:00:00+01:00`;
+        } else {
+          const nextYear = month === 12 ? year + 1 : year;
+          const nextMonth = month === 12 ? 1 : month + 1;
+          from = `${year}-${pad(month)}-01T00:00:00+01:00`;
+          to = `${nextYear}-${pad(nextMonth)}-01T00:00:00+01:00`;
+        }
+        const result = await callSupabaseRpc<Record<string, unknown>>(env, userJwt, "get_income_history", {
+          p_from: from,
+          p_to: to,
+          p_bucket: view === "year" ? "month" : "day",
+          p_worker_secret: env.PAYMENT_WORKER_SECRET,
+        });
+        if (!result.ok) {
+          return jsonResponse({ success: false, message: "Income history could not be loaded", data: null }, result.status === 403 ? 403 : 500);
+        }
+        return jsonResponse({
+          success: true,
+          message: "Income analytics loaded",
+          data: { ...result.data, view, year, month },
+        });
       }
 
       const adminOrderActionMatch = pathname.match(/^\/api\/admin\/orders\/([^/]+)\/action$/);
@@ -1393,6 +1909,7 @@ export default {
           Boolean(order.driver_id) &&
           ["accepted", "arrived"].includes(order.driver_task_status || "") &&
           ["pickup-confirmed", "out-for-delivery"].includes(order.status);
+        const destination = trackingDestination(order);
 
         return jsonResponse({
           success: true,
@@ -1403,10 +1920,7 @@ export default {
             taskType: order.driver_task_type,
             taskStatus: order.driver_task_status,
             orderStatus: order.status,
-            destination:
-              order.latitude === null || order.longitude === null
-                ? null
-                : { latitude: order.latitude, longitude: order.longitude },
+            destination,
             location,
           },
         });
@@ -1423,56 +1937,58 @@ export default {
           );
         }
         const location = await loadCurrentDriverLocation(env, userJwt, orderId);
-        if (!location || order.latitude === null || order.longitude === null) {
+        const destination = trackingDestination(order);
+        if (!destination) {
           return jsonResponse(
-            { success: false, message: "A live driver and destination location are required", data: null },
+            { success: false, message: "This order has no verified service location. Contact operations before starting the journey.", data: null },
+            409,
+          );
+        }
+        if (!location) {
+          return jsonResponse(
+            { success: false, message: "Start the live journey to calculate the road route.", data: null },
             409,
           );
         }
 
-        const routesResponse = await fetch(
-          "https://routes.googleapis.com/directions/v2:computeRoutes",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "X-Goog-Api-Key": env.GOOGLE_ROUTES_API_KEY,
-              "X-Goog-FieldMask": "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline",
-            },
-            body: JSON.stringify({
-              origin: {
-                location: {
-                  latLng: { latitude: location.latitude, longitude: location.longitude },
-                },
-              },
-              destination: {
-                location: {
-                  latLng: { latitude: order.latitude, longitude: order.longitude },
-                },
-              },
-              travelMode: "DRIVE",
-              routingPreference: "TRAFFIC_AWARE",
-              computeAlternativeRoutes: false,
-              polylineQuality: "HIGH_QUALITY",
-              polylineEncoding: "ENCODED_POLYLINE",
-            }),
-          },
-        );
+        const origin = validMapPoint(location.latitude, location.longitude);
+        if (!origin) {
+          return jsonResponse(
+            { success: false, message: "The latest driver GPS update is invalid. Refresh the device location and try again.", data: null },
+            409,
+          );
+        }
 
-        const routesPayload = (await routesResponse.json()) as {
-          routes?: {
-            duration?: string;
-            distanceMeters?: number;
-            polyline?: { encodedPolyline?: string };
-          }[];
-          error?: { message?: string };
-        };
-        const route = routesPayload.routes?.[0];
-        if (!routesResponse.ok || !route?.polyline?.encodedPolyline) {
+        let routeResult = await requestGoogleRoadRoute(env, origin, destination, true);
+        let route = routeResult.payload.routes?.[0];
+        // Some local roads have no traffic model. Retry once without the
+        // traffic-aware preference before declaring routing unavailable.
+        if (
+          !route?.polyline?.encodedPolyline &&
+          (routeResult.timedOut || !routeResult.response || routeResult.response.status === 429 || routeResult.response.status >= 500 || routeResult.response.ok)
+        ) {
+          routeResult = await requestGoogleRoadRoute(env, origin, destination, false);
+          route = routeResult.payload.routes?.[0];
+        }
+
+        if (!routeResult.response?.ok || !route?.polyline?.encodedPolyline) {
+          console.error(JSON.stringify({
+            message: "Google road route calculation failed",
+            orderId,
+            status: routeResult.response?.status ?? null,
+            googleStatus: routeResult.payload.error?.status,
+            googleCode: routeResult.payload.error?.code,
+            googleMessage: routeResult.payload.error?.message,
+            timedOut: routeResult.timedOut,
+          }));
           return jsonResponse(
             {
               success: false,
-              message: routesPayload.error?.message || "A road route could not be calculated right now",
+              message: routeResult.timedOut
+                ? "Road routing timed out. Retry or open Google Maps for navigation."
+                : routeResult.response?.status === 403
+                  ? "Road routing is temporarily unavailable. Operations has been notified."
+                  : "A road route could not be calculated. Retry or open Google Maps for navigation.",
               data: null,
             },
             502,
@@ -1507,7 +2023,8 @@ export default {
         queryUrl.searchParams.set("select", DRIVER_ORDER_SELECT);
         queryUrl.searchParams.set("payment_status", "in.(paid,unpaid)");
         queryUrl.searchParams.set("available_to_drivers", "eq.true");
-        queryUrl.searchParams.set("status", "in.(pickup-confirmed,out-for-delivery)");
+        queryUrl.searchParams.set("archived_at", "is.null");
+        queryUrl.searchParams.set("status", "in.(pickup-confirmed,ready-for-delivery,out-for-delivery)");
         queryUrl.searchParams.set("or", `(driver_id.is.null,driver_id.eq.${user.id})`);
         queryUrl.searchParams.set("order", "pickup_at.asc");
         const response = await fetch(queryUrl, { headers: supabaseHeaders(env, userJwt) });
@@ -1546,6 +2063,7 @@ export default {
         const ordersUrl = new URL(`${env.SUPABASE_URL}/rest/v1/orders`);
         ordersUrl.searchParams.set("select", DRIVER_ORDER_SELECT);
         ordersUrl.searchParams.set("id", `in.(${orderIds.map(encodeURIComponent).join(",")})`);
+        ordersUrl.searchParams.set("archived_at", "is.null");
         const ordersResponse = await fetch(ordersUrl, { headers: supabaseHeaders(env, userJwt) });
         if (!ordersResponse.ok) {
           return jsonResponse({ success: false, message: "Completed order details could not be loaded", data: null }, ordersResponse.status);
@@ -1584,6 +2102,7 @@ export default {
         const queryUrl = new URL(`${env.SUPABASE_URL}/rest/v1/orders`);
         queryUrl.searchParams.set("select", DRIVER_ORDER_SELECT);
         queryUrl.searchParams.set("id", `eq.${taskId}`);
+        queryUrl.searchParams.set("archived_at", "is.null");
         queryUrl.searchParams.set("limit", "1");
         const response = await fetch(queryUrl, { headers: supabaseHeaders(env, userJwt) });
         const rows = response.ok ? ((await response.json()) as DriverOrderRow[]) : [];
@@ -1637,6 +2156,7 @@ export default {
         const currentUrl = new URL(`${env.SUPABASE_URL}/rest/v1/orders`);
         currentUrl.searchParams.set("select", "*");
         currentUrl.searchParams.set("id", `eq.${taskId}`);
+        currentUrl.searchParams.set("archived_at", "is.null");
         currentUrl.searchParams.set("limit", "1");
         const currentResponse = await fetch(currentUrl, { headers: supabaseHeaders(env, userJwt) });
         const currentRows = currentResponse.ok ? ((await currentResponse.json()) as DriverOrderRow[]) : [];
@@ -1653,10 +2173,25 @@ export default {
           if (!current.available_to_drivers || current.driver_task_status !== "available" || current.driver_id) {
             return jsonResponse({ success: false, message: "Another driver has already accepted this task", data: null }, 409);
           }
+          if (!driverTaskDestination(current)) {
+            console.error(JSON.stringify({
+              message: "Driver task acceptance blocked because destination is missing",
+              orderId: current.id,
+              taskType: current.driver_task_type,
+            }));
+            return jsonResponse({
+              success: false,
+              message: "This task has no verified service location. Operations must repair the order before a driver can accept it.",
+              data: null,
+            }, 409);
+          }
           patchUrl.searchParams.set("driver_task_status", "eq.available");
           patchUrl.searchParams.set("driver_id", "is.null");
           update.driver_id = user.id;
           update.driver_task_status = "accepted";
+          if (current.driver_task_type === "delivery" && current.status === "ready-for-delivery") {
+            update.status = "out-for-delivery";
+          }
         } else {
           if (current.driver_id !== user.id && role !== "admin" && role !== "superadmin") {
             return jsonResponse({ success: false, message: "Accept this task before updating it", data: null }, 403);
@@ -1830,9 +2365,10 @@ export default {
         const historyUrl = new URL(`${env.SUPABASE_URL}/rest/v1/orders`);
         historyUrl.searchParams.set(
           "select",
-          "id,payment_reference,payment_status,payment_method,paid_amount,payment_expires_at,payment_paid_at,payment_authorization_url,payment_marked_by,payment_marked_by_role,payment_mark_source,payment_marked_at,created_at,is_express,mode,status",
+          "id,payment_reference,payment_status,payment_method,paid_amount,pickup_delivery_fee,shared_pickup_discount,shared_pickup_order_id,payment_expires_at,payment_paid_at,payment_authorization_url,payment_marked_by,payment_marked_by_role,payment_mark_source,payment_marked_at,created_at,is_express,mode,status",
         );
         historyUrl.searchParams.set("user_id", `eq.${user.id}`);
+        historyUrl.searchParams.set("archived_at", "is.null");
         historyUrl.searchParams.set("order", "created_at.desc");
         historyUrl.searchParams.set("limit", "100");
         const historyResponse = await fetch(historyUrl, {
@@ -1851,7 +2387,7 @@ export default {
       // GET /api/orders/list
       if (pathname === "/api/orders/list" && request.method === "GET") {
         const orderListRes = await fetch(
-          `${env.SUPABASE_URL}/rest/v1/orders?select=*&order=created_at.desc`,
+          `${env.SUPABASE_URL}/rest/v1/orders?select=*&archived_at=is.null&order=created_at.desc`,
           {
             headers: {
               apikey: env.SUPABASE_ANON_KEY,

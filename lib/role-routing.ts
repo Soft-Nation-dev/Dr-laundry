@@ -2,7 +2,7 @@ import type { AppRole } from "@/types/profile";
 
 export function getLandingRoute(role: AppRole): string {
   if (role === "driver") return "/driver/home";
-  if (role === "admin") return "/admin/orders";
+  if (role === "admin") return "/admin";
   if (role === "superadmin") return "/admin";
   return "/home";
 }

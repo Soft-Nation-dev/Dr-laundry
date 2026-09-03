@@ -23,6 +23,7 @@ const tabs: { key: OrderTab; label: string }[] = [
 const statusMeta: Record<OrderStatus, { progress: number; icon: keyof typeof Ionicons.glyphMap; tint: string }> = {
   "pickup-confirmed": { progress: 20, icon: "basket-outline", tint: "#7740D6" },
   processing: { progress: 55, icon: "water-outline", tint: "#5B21B6" },
+  "ready-for-delivery": { progress: 75, icon: "calendar-outline", tint: "#087A58" },
   "out-for-delivery": { progress: 82, icon: "bicycle-outline", tint: "#B86B00" },
   delivered: { progress: 100, icon: "checkmark-circle-outline", tint: "#149A6E" },
   cancelled: { progress: 0, icon: "close-circle-outline", tint: "#C84A68" },
@@ -44,6 +45,7 @@ function orderSummary(order: OrderRecord): string {
 function primaryAction(status: OrderStatus): string {
   if (status === "pickup-confirmed") return "Track Pickup";
   if (status === "processing") return "Live Track";
+  if (status === "ready-for-delivery") return "Confirm Delivery";
   if (status === "out-for-delivery") return "Track Delivery";
   if (status === "delivered") return "View Receipt";
   return "Book Again";
@@ -65,7 +67,13 @@ function OrderCard({ order, index }: { order: OrderRecord; index: number }) {
   }, [entrance, index]);
 
   const openTracking = () => router.push({ pathname: "/track-order", params: { orderId: order.id } });
-  const handlePrimary = () => order.status === "cancelled" ? router.push("/new-order") : openTracking();
+  const handlePrimary = () => {
+    if (order.status === "cancelled") return router.push("/new-order");
+    if (order.status === "ready-for-delivery" && order.deliveryConfirmationStatus !== "confirmed") {
+      return router.push({ pathname: "/confirm-delivery", params: { orderId: order.id } } as never);
+    }
+    return openTracking();
+  };
 
   return (
     <Animated.View style={{ opacity: entrance, transform: [{ translateY: entrance.interpolate({ inputRange: [0, 1], outputRange: [18, 0] }) }] }}>

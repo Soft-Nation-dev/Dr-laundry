@@ -31,6 +31,8 @@ export default function RootLayout() {
         <Stack.Screen name="order-history" />
         <Stack.Screen name="membership" />
         <Stack.Screen name="support" />
+          <Stack.Screen name="catalogue" />
+          <Stack.Screen name="confirm-delivery" />
         <Stack.Screen name="profile" />
         <Stack.Screen name="settings" />
         <Stack.Screen name="new-order" />
@@ -42,6 +44,8 @@ export default function RootLayout() {
         <Stack.Screen name="admin/index" />
         <Stack.Screen name="admin/orders" />
         <Stack.Screen name="admin/users" />
+        <Stack.Screen name="admin/locations" />
+        <Stack.Screen name="admin/income" />
         <Stack.Screen name="driver/home" />
         <Stack.Screen name="driver/task-detail" />
         <Stack.Screen name="driver/completed" />

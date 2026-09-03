@@ -389,11 +389,11 @@ export default function HomeScreen() {
               </SoftPressable>
 
               <SoftPressable
-                onPress={() => router.push("/support" as never)}
+                onPress={() => router.push("/catalogue" as never)}
                 style={styles.serviceTileSecondary}
               >
-                <Ionicons name="chatbubble-ellipses-outline" size={22} color={LaundryTheme.colors.primaryDark} />
-                <Text style={styles.serviceTitleSecondary}>Chater</Text>
+                <Ionicons name="shirt-outline" size={22} color={LaundryTheme.colors.primaryDark} />
+                <Text style={styles.serviceTitleSecondary}>Catalogue</Text>
               </SoftPressable>
 
               <SoftPressable

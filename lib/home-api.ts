@@ -33,6 +33,7 @@ export async function getHomeDashboard(): Promise<HomeDashboard> {
       .from("orders")
       .select("id,pickup_at,status,is_express,paid_amount,payment_status,payment_expires_at,created_at")
       .eq("user_id", user.id)
+      .is("archived_at", null)
       .order("created_at", { ascending: false }),
     supabase
       .from("notifications")

@@ -46,17 +46,14 @@ export async function registerForNativeNotifications(): Promise<string | null> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const { error } = await supabase.from("push_tokens").upsert(
-    {
-      user_id: user.id,
-      expo_push_token: token,
-      platform: Platform.OS,
-      device_name: Device.deviceName ?? null,
-      enabled: true,
-      last_seen_at: new Date().toISOString(),
-    },
-    { onConflict: "expo_push_token" },
-  );
+  // A device token can survive logout and later belong to a different account.
+  // Register through the authenticated database function so ownership can be
+  // transferred safely without weakening the table's row-level policies.
+  const { error } = await supabase.rpc("register_push_token", {
+    p_expo_push_token: token,
+    p_platform: Platform.OS,
+    p_device_name: Device.deviceName ?? null,
+  });
   if (error) throw new Error(error.message);
   await AsyncStorage.setItem(PUSH_TOKEN_KEY, token);
   return token;

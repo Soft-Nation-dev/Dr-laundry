@@ -1,7 +1,7 @@
 import { supabase } from "@/lib/supabase-client";
 import { apiRequest } from "@/lib/api-client";
 import type { AppRole } from "@/types/profile";
-import type { OrderStatus } from "@/types/order";
+import type { OrderStatus, PaymentMethod } from "@/types/order";
 
 export type AdminOrderItem = {
   name: string;
@@ -16,6 +16,7 @@ export type AdminOrder = {
   customerEmail: string;
   customerPhone: string;
   address: string;
+  locationAvailable: boolean;
   status: OrderStatus;
   isExpress: boolean;
   paidAmount: number;
@@ -35,6 +36,9 @@ export type AdminOrder = {
   cancellationReason?: string;
   cancelledByName?: string;
   cancelledByRole?: "system" | "admin" | "superadmin";
+  sharedPickupOrderId?: string;
+  sharedPickupDiscount: number;
+  isReviewOrder: boolean;
   items: AdminOrderItem[];
 };
 
@@ -49,10 +53,75 @@ export type ManagedProfile = {
   createdAt: string;
 };
 
+export type LocationAnalytics = {
+  totals: { uniqueCustomers: number; mappedOrders: number; mappedLocations: number; clusterRadiusKm: number };
+  locations: {
+    placeId: string | null;
+    label: string;
+    latitude: number | null;
+    longitude: number | null;
+    customerCount: number;
+    orderCount: number;
+    paidRevenue: number;
+    lastOrderAt: string;
+    heatScore: number;
+    radiusKm: number;
+  }[];
+};
+
+export type IncomeView = "month" | "year";
+
+export type IncomeAnalytics = {
+  totals: {
+    successfulRevenue: number;
+    pendingCheckoutValue: number;
+    unpaidDeliveryValue: number;
+    todayRevenue: number;
+    monthRevenue: number;
+    successfulPayments: number;
+    pendingPayments: number;
+    unpaidDeliveryOrders: number;
+    cancelledOrders: number;
+  };
+  view: IncomeView;
+  year: number;
+  month: number;
+  period: { from: string; to: string; revenue: number; payments: number };
+  series: { period: string; revenue: number; payments: number }[];
+  history: {
+    id: number;
+    orderId: string;
+    amount: number;
+    occurredAt: string;
+    paymentMethod: PaymentMethod;
+    source: string;
+    actorRole: string;
+  }[];
+  availableYears: number[];
+};
+
+export async function getLocationAnalytics(): Promise<LocationAnalytics> {
+  const response = await apiRequest<LocationAnalytics>("/api/admin/analytics/locations", { auth: true });
+  if (!response.success || !response.data) throw new Error(response.message || "Location analytics could not be loaded");
+  return response.data;
+}
+
+export async function getIncomeAnalytics(input: { view: IncomeView; year: number; month: number }): Promise<IncomeAnalytics> {
+  const params = new URLSearchParams({
+    view: input.view,
+    year: String(input.year),
+    month: String(input.month),
+  });
+  const response = await apiRequest<IncomeAnalytics>(`/api/admin/analytics/income?${params}`, { auth: true });
+  if (!response.success || !response.data) throw new Error(response.message || "Income analytics could not be loaded");
+  return response.data;
+}
+
 export async function getAdminOrders(): Promise<AdminOrder[]> {
   const { data: orderRows, error } = await supabase
     .from("orders")
-    .select("id,user_id,address,status,is_express,paid_amount,payment_status,payment_method,payment_marked_by_role,payment_marked_at,created_at,promised_delivery_at,driver_id,driver_task_status,available_to_drivers,availability_source,available_at,available_by_name,available_by_role,cancellation_reason,cancelled_by_name,cancelled_by_role,order_items(name,quantity,unit_price)")
+    .select("id,user_id,address,latitude,longitude,status,is_express,paid_amount,payment_status,payment_method,payment_marked_by_role,payment_marked_at,created_at,promised_delivery_at,driver_id,driver_task_status,available_to_drivers,availability_source,available_at,available_by_name,available_by_role,cancellation_reason,cancelled_by_name,cancelled_by_role,shared_pickup_order_id,shared_pickup_discount,is_review_order,order_items(name,quantity,unit_price)")
+    .is("archived_at", null)
     .order("created_at", { ascending: false });
   if (error) throw new Error(error.message);
 
@@ -76,6 +145,7 @@ export async function getAdminOrders(): Promise<AdminOrder[]> {
       customerEmail: profile?.email || "",
       customerPhone: profile?.phone_number || "",
       address: row.address || "",
+      locationAvailable: Number.isFinite(Number(row.latitude)) && Number.isFinite(Number(row.longitude)),
       status: row.status,
       isExpress: !!row.is_express,
       paidAmount: Number(row.paid_amount || 0),
@@ -95,6 +165,9 @@ export async function getAdminOrders(): Promise<AdminOrder[]> {
       cancellationReason: row.cancellation_reason || undefined,
       cancelledByName: row.cancelled_by_name || undefined,
       cancelledByRole: row.cancelled_by_role || undefined,
+      sharedPickupOrderId: row.shared_pickup_order_id || undefined,
+      sharedPickupDiscount: Number(row.shared_pickup_discount || 0),
+      isReviewOrder: Boolean(row.is_review_order),
       items: (row.order_items ?? []).map((item: any) => ({
         name: item.name,
         quantity: Number(item.quantity || 0),
@@ -102,6 +175,13 @@ export async function getAdminOrders(): Promise<AdminOrder[]> {
       })),
     } satisfies AdminOrder;
   });
+}
+
+export async function createReviewOrder(): Promise<string> {
+  const { data, error } = await supabase.rpc("create_review_order");
+  if (error) throw new Error(error.message || "The review workflow could not be created");
+  if (typeof data !== "string" || !data) throw new Error("The review order ID was not returned");
+  return data;
 }
 
 export async function markAdminOrderPaid(orderId: string): Promise<void> {

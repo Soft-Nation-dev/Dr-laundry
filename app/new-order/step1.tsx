@@ -51,13 +51,13 @@ export default function NewOrderStep1() {
         <Text style={styles.label}>Pickup window</Text>
         <View style={styles.card}>
           <SelectableRow
-            label="10am - 12pm"
+            label="8am - 10am"
             icon="sunny-outline"
             selected={pickupWindow === "morning"}
             onPress={() => setPickupWindow("morning")}
           />
           <SelectableRow
-            label="3pm - 5pm"
+            label="5pm - 7pm"
             icon="partly-sunny-outline"
             selected={pickupWindow === "afternoon"}
             onPress={() => setPickupWindow("afternoon")}

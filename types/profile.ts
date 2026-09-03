@@ -3,6 +3,9 @@ export type Profile = {
   email: string;
   phoneNumber: string;
   address: string;
+  addressPlaceId?: string;
+  latitude?: number;
+  longitude?: number;
   avatarUrl: string;
   role: AppRole;
 };

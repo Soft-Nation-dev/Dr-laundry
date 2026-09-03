@@ -13,29 +13,29 @@ export type SharedLaundryMode = keyof typeof SHARED_MODE_MULTIPLIERS;
 
 export const SHARED_LAUNDRY_CATALOG = [
   { id: "polo", name: "Polos", basePrice: 300, category: "regular" },
-  { id: "tshirt", name: "T-Shirts", basePrice: 300, category: "regular" },
-  { id: "blouse", name: "Blouses", basePrice: 300, category: "regular" },
+  { id: "long-sleeved-shirt", name: "Long-sleeved Shirts", basePrice: 300, category: "regular" },
+  { id: "underwear", name: "Underwear", basePrice: 300, category: "regular" },
   { id: "shorts", name: "Shorts", basePrice: 300, category: "regular" },
   { id: "skirt", name: "Skirts", basePrice: 300, category: "regular" },
   { id: "trouser", name: "Trousers", basePrice: 300, category: "regular" },
-  { id: "up-and-down", name: "Up & Downs", basePrice: 600, category: "regular" },
+  { id: "up-and-down", name: "Up & Down Sets", basePrice: 600, category: "regular" },
   { id: "overall", name: "Overalls", basePrice: 600, category: "regular" },
   { id: "jean-overall", name: "Jean Overalls", basePrice: 800, category: "regular" },
-  { id: "duvet", name: "Duvet", basePrice: 2500, category: "regular" },
+  { id: "duvet", name: "Duvets", basePrice: 2500, category: "regular" },
   { id: "blanket", name: "Blankets", basePrice: 700, category: "regular" },
-  { id: "full-suit", name: "Full Suit (Coat, Jacket, Trouser)", basePrice: 1500, category: "regular" },
+  { id: "full-suit", name: "Full Suits (Coats, Jackets & Trousers)", basePrice: 1500, category: "regular" },
   { id: "gown", name: "Gowns", basePrice: 600, category: "regular" },
   { id: "bedsheet", name: "Bedsheets", basePrice: 700, category: "regular" },
   { id: "wrapper", name: "Wrappers", basePrice: 500, category: "regular" },
-  { id: "jalabia", name: "Jalabia", basePrice: 600, category: "regular" },
+  { id: "jalabia", name: "Jalabias", basePrice: 600, category: "regular" },
   { id: "socks-caps", name: "Socks & Caps", basePrice: 100, category: "regular" },
-  { id: "agbada", name: "Agbada", basePrice: 1500, category: "regular" },
-  { id: "towel", name: "Towel", basePrice: 600, category: "regular" },
+  { id: "agbada", name: "Agbadas", basePrice: 1500, category: "regular" },
+  { id: "towel", name: "Towels", basePrice: 600, category: "regular" },
   { id: "curtains", name: "Curtains", basePrice: 1000, category: "regular" },
   { id: "ceremonial-gown", name: "Ceremonial Gowns (Convocation, Graduation, etc)", basePrice: 1500, category: "regular" },
-  { id: "foot-mat", name: "Foot Mat", basePrice: 1000, category: "extras" },
+  { id: "foot-mat", name: "Foot Mats", basePrice: 1000, category: "extras" },
   { id: "slippers-palms", name: "Slippers / Palms", basePrice: 1000, category: "extras" },
-  { id: "shoe-canvas", name: "Shoe / Canvas", basePrice: 1000, category: "extras" },
+  { id: "shoe-canvas", name: "Shoes / Canvas", basePrice: 1000, category: "extras" },
   { id: "bags", name: "Bags", basePrice: 1000, category: "extras" },
 ] as const;
 
@@ -47,6 +47,7 @@ export function calculateServerPricing(
   items: { id: string; quantity: number; mode?: string }[],
   fallbackMode: string,
   isExpress: boolean,
+  pickupDeliveryFee = SHARED_STANDARD_PICKUP_AND_DELIVERY_FEE,
 ) {
   if (!(fallbackMode in SHARED_MODE_MULTIPLIERS)) {
     throw new Error("Unsupported laundry mode");
@@ -75,14 +76,25 @@ export function calculateServerPricing(
   });
 
   const modeSubtotal = lineItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
-  const standardTotal = modeSubtotal + SHARED_STANDARD_PICKUP_AND_DELIVERY_FEE;
+  if (
+    !Number.isFinite(pickupDeliveryFee) ||
+    pickupDeliveryFee < 0 ||
+    pickupDeliveryFee > SHARED_STANDARD_PICKUP_AND_DELIVERY_FEE
+  ) {
+    throw new Error("Invalid pickup and delivery fee");
+  }
+  const standardTotal = modeSubtotal + pickupDeliveryFee;
   const expressPremium = sharedRoundToNearest(standardTotal * SHARED_EXPRESS_SURCHARGE_RATE);
   const expressTotal = standardTotal + expressPremium + SHARED_EXPRESS_DELIVERY_FEE;
   return {
     lineItems,
     modeSubtotal,
+    pickupDeliveryFee,
+    sharedPickupDiscount:
+      SHARED_STANDARD_PICKUP_AND_DELIVERY_FEE - pickupDeliveryFee,
     standardTotal,
     expressPremium,
+    expressDeliveryFee: SHARED_EXPRESS_DELIVERY_FEE,
     expressTotal,
     finalAmount: isExpress ? expressTotal : standardTotal,
   };

@@ -6,6 +6,7 @@ import { MODE_OPTIONS } from "@/constants/pricing";
 import { apiRequest } from "@/lib/api-client";
 import { clearDraft, getDraft } from "@/lib/order-draft";
 import {
+  applySharedPickupDiscount,
   formatDateTime,
   formatNaira,
   getTurnaroundHours,
@@ -107,6 +108,11 @@ export default function PaymentScreen() {
   const [showExpressModal, setShowExpressModal] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"paystack" | "pay_on_delivery">("paystack");
   const [payOnDeliveryEligible, setPayOnDeliveryEligible] = useState(false);
+  const [sharedPickupQuote, setSharedPickupQuote] = useState<{
+    eligible: boolean;
+    anchorOrderId: string | null;
+    discountAmount: number;
+  }>({ eligible: false, anchorOrderId: null, discountAmount: 0 });
   const [isLoadingPaymentOptions, setIsLoadingPaymentOptions] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [webViewError, setWebViewError] = useState<string | null>(null);
@@ -147,21 +153,38 @@ export default function PaymentScreen() {
   }, [showExpressModal, modalSlide]);
 
   useEffect(() => {
-    if (!showExpressModal) return;
+    if (!orderDraft?.addressPlaceId) return;
     let active = true;
     setIsLoadingPaymentOptions(true);
-    apiRequest<{ payOnDeliveryEligible: boolean }>("/api/orders/payment-options", { auth: true })
+    const params = new URLSearchParams({
+      addressPlaceId: orderDraft.addressPlaceId,
+      pickupDay: orderDraft.pickupDay,
+      pickupWindow: orderDraft.pickupWindow,
+    });
+    apiRequest<{
+      payOnDeliveryEligible: boolean;
+      sharedPickup?: {
+        eligible: boolean;
+        anchorOrderId: string | null;
+        discountAmount: number;
+      };
+    }>(`/api/orders/payment-options?${params.toString()}`, { auth: true })
       .then((response) => {
         if (!active) return;
         const eligible = Boolean(response.success && response.data?.payOnDeliveryEligible);
         setPayOnDeliveryEligible(eligible);
+        setSharedPickupQuote(
+          response.success && response.data?.sharedPickup
+            ? response.data.sharedPickup
+            : { eligible: false, anchorOrderId: null, discountAmount: 0 },
+        );
         if (!eligible) setPaymentMethod("paystack");
       })
       .finally(() => {
         if (active) setIsLoadingPaymentOptions(false);
       });
     return () => { active = false; };
-  }, [showExpressModal]);
+  }, [orderDraft?.addressPlaceId, orderDraft?.pickupDay, orderDraft?.pickupWindow]);
 
   const dismissCheckoutSheet = useCallback(() => new Promise<void>((resolve) => {
     Animated.timing(modalSlide, {
@@ -270,8 +293,15 @@ export default function PaymentScreen() {
     resolvePromisedDeliveryISO(new Date().toISOString(), isExpress),
   );
 
-  const payableAmount = orderDraft
-    ? isExpress ? orderDraft.totals.expressTotal : orderDraft.totals.standardTotal
+  const checkoutTotals = useMemo(() => {
+    if (!orderDraft) return null;
+    return sharedPickupQuote.eligible
+      ? applySharedPickupDiscount(orderDraft.totals)
+      : orderDraft.totals;
+  }, [orderDraft, sharedPickupQuote.eligible]);
+
+  const payableAmount = checkoutTotals
+    ? isExpress ? checkoutTotals.expressTotal : checkoutTotals.standardTotal
     : 0;
 
   // ── Pay Button ─────────────────────────────────
@@ -567,19 +597,40 @@ export default function PaymentScreen() {
               {/* Price Breakdown Card */}
               <Animated.View style={[styles.card, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
                 <CardHeader icon="receipt-outline" title="Price breakdown" />
-                <PriceRow label="Base subtotal" amount={orderDraft.totals.baseSubtotal} />
-                <PriceRow label={`${MODE_OPTIONS[orderDraft.mode].label} subtotal`} amount={orderDraft.totals.modeSubtotal} />
-                <PriceRow label="Pickup & delivery" amount={orderDraft.totals.pickupDeliveryFee} />
+                <PriceRow label="Base subtotal" amount={checkoutTotals!.baseSubtotal} />
+                <PriceRow label={`${MODE_OPTIONS[orderDraft.mode].label} subtotal`} amount={checkoutTotals!.modeSubtotal} />
+                <PriceRow label="Pickup & delivery" amount={checkoutTotals!.pickupDeliveryFee} />
+                {sharedPickupQuote.eligible ? (
+                  <PriceRow
+                    label={`Shared pickup with #${sharedPickupQuote.anchorOrderId}`}
+                    amount={sharedPickupQuote.discountAmount}
+                    prefix="−"
+                  />
+                ) : null}
                 <View style={styles.divider} />
-                <PriceRow label="Standard total" amount={orderDraft.totals.standardTotal} highlight />
+                <PriceRow label="Standard total" amount={checkoutTotals!.standardTotal} highlight />
                 {isExpress && (
                   <>
-                    <PriceRow label="Express surcharge" amount={orderDraft.totals.expressPremium} prefix="+" />
-                    <PriceRow label="Express delivery" amount={orderDraft.totals.expressDeliveryFee} prefix="+" />
-                    <PriceRow label="Express total" amount={orderDraft.totals.expressTotal} highlight />
+                    <PriceRow label="Express surcharge" amount={checkoutTotals!.expressPremium} prefix="+" />
+                    <PriceRow label="Express delivery" amount={checkoutTotals!.expressDeliveryFee} prefix="+" />
+                    <PriceRow label="Express total" amount={checkoutTotals!.expressTotal} highlight />
                   </>
                 )}
               </Animated.View>
+
+              {sharedPickupQuote.eligible ? (
+                <View style={styles.sharedPickupCard}>
+                  <View style={styles.sharedPickupIcon}>
+                    <Ionicons name="git-merge-outline" size={19} color="#087A58" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.sharedPickupTitle}>One pickup, no duplicate fee</Text>
+                    <Text style={styles.sharedPickupBody}>
+                      This order matches your paid order #{sharedPickupQuote.anchorOrderId}. The backend will bundle the pickup and remove the second ₦1,500 fee.
+                    </Text>
+                  </View>
+                </View>
+              ) : null}
 
               {/* Delivery speed context */}
               <Animated.View style={[styles.expressNudge, { opacity: fadeAnim }]}>
@@ -596,8 +647,8 @@ export default function PaymentScreen() {
                     {isExpress
                       ? "Returned within 24 hours from the time your order is placed."
                       : `Upgrade at checkout for ${formatNaira(
-                          orderDraft.totals.expressPremium +
-                            orderDraft.totals.expressDeliveryFee,
+                          checkoutTotals!.expressPremium +
+                            checkoutTotals!.expressDeliveryFee,
                         )} more and receive it within 24 hours.`}
                   </Text>
                 </View>
@@ -618,10 +669,11 @@ export default function PaymentScreen() {
           <View style={{ paddingBottom: 12, paddingTop: 6 }}>
             <SoftPressable
               onPress={handlePayPress}
-              style={[styles.payButton, !orderDraft && styles.payButtonDisabled]}
+              disabled={!orderDraft || isLoadingPaymentOptions}
+              style={[styles.payButton, (!orderDraft || isLoadingPaymentOptions) && styles.payButtonDisabled]}
             >
-              <Ionicons name="card-outline" size={20} color="#fff" />
-              <Text style={styles.payText}>Pay securely</Text>
+              {isLoadingPaymentOptions ? <ActivityIndicator color="#FFFFFF" size="small" /> : <Ionicons name="card-outline" size={20} color="#fff" />}
+              <Text style={styles.payText}>{isLoadingPaymentOptions ? "Checking secure price" : "Pay securely"}</Text>
               <View style={styles.payDivider} />
               <Text
                 numberOfLines={1}
@@ -680,7 +732,7 @@ export default function PaymentScreen() {
                             minimumFontScale={0.72}
                             style={styles.optionAmount}
                           >
-                            {formatNaira(orderDraft.totals.standardTotal)}
+                            {formatNaira(checkoutTotals!.standardTotal)}
                           </Text>
                           {!isExpress && <Ionicons name="checkmark-circle" size={20} color={LaundryTheme.colors.primary} />}
                         </View>
@@ -696,8 +748,8 @@ export default function PaymentScreen() {
                           <Text style={styles.optionTitle}>⚡ Express</Text>
                           <Text style={styles.optionDetail}>
                             +{formatNaira(
-                              orderDraft.totals.expressPremium +
-                                orderDraft.totals.expressDeliveryFee,
+                              checkoutTotals!.expressPremium +
+                                checkoutTotals!.expressDeliveryFee,
                             )} • returned within 24 hours
                           </Text>
                         </View>
@@ -708,7 +760,7 @@ export default function PaymentScreen() {
                             minimumFontScale={0.72}
                             style={styles.optionAmount}
                           >
-                            {formatNaira(orderDraft.totals.expressTotal)}
+                            {formatNaira(checkoutTotals!.expressTotal)}
                           </Text>
                           {isExpress && <Ionicons name="checkmark-circle" size={20} color={LaundryTheme.colors.primary} />}
                         </View>
@@ -993,6 +1045,28 @@ const styles = StyleSheet.create({
   priceValue: { width: "43%", fontSize: 14, color: LaundryTheme.colors.ink, fontWeight: "800", textAlign: "right", lineHeight: 21, paddingVertical: 2 },
   priceHighlight: { color: LaundryTheme.colors.primaryDark, fontWeight: "900", fontSize: 16.5, lineHeight: 23 },
   divider: { height: 1, backgroundColor: "rgba(0,0,0,0.06)", marginVertical: 10 },
+
+  sharedPickupCard: {
+    marginBottom: 14,
+    borderRadius: 18,
+    padding: 14,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 11,
+    backgroundColor: "#ECFBF5",
+    borderWidth: 1,
+    borderColor: "#BCEAD8",
+  },
+  sharedPickupIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 13,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#D7F5E9",
+  },
+  sharedPickupTitle: { color: "#075D45", fontSize: 13.5, fontWeight: "900" },
+  sharedPickupBody: { color: "#397361", fontSize: 11.5, lineHeight: 17, marginTop: 3 },
 
   // Express nudge
   expressNudge: {
