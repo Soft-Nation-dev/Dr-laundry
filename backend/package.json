@@ -9,8 +9,5 @@
   "devDependencies": {
     "typescript": "^5.0.0",
     "wrangler": "^4.119.0"
-  },
-  "dependencies": {
-    "dr-laundry": "file:.."
   }
 }

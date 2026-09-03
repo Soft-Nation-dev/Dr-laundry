@@ -25,6 +25,10 @@ expo-env.d.ts
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+*.log
+
+# IDE and local tooling state
+.vs/
 
 # macOS
 .DS_Store
@@ -40,6 +44,18 @@ dr-laundry-4bcb6-firebase-adminsdk-fbsvc-df15bdb4b1.json
 *.tsbuildinfo
 
 app-example
+
+# generated scratch files and one-off diagnostics
+/tmp/
+/buildlog.txt
+
+# Cloudflare Wrangler local state
+**/.wrangler/
+/backend/.wrangler-config/
+
+# Accidental Expo metadata inside the Worker package
+/backend/app.json
+/backend/eas.json
 
 # generated native folders
 /ios
